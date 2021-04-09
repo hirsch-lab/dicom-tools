@@ -31,15 +31,16 @@ jobs:
         python -m pip install -e .
     - name: Test with pytest
       run: |
-        pytest --cov --cov-report=xml --cov-report=html
+        pytest
 
     - name: Upload coverage data to coveralls.io
-      # https://github.com/lemurheavy/coveralls-public/issues/1435#issuecomment-763357004
-      # https://github.com/coverallsapp/github-action/issues/30#issuecomment-791094512
-      # https://github.com/coverallsapp/github-action/issues/30#issuecomment-612523058
-      # python -m pip install coveralls=2.2.0
+      # Don't forget to enable the project on coveralls.io (login via github)
+      #   https://coveralls.io/
+      # It was a pain to set up coveralls. The following resources helped:
+      # I summarized my experiences in this post:
+      # https://github.com/coverallsapp/github-action/issues/30#issuecomment-816366758
       run: |
-        python -m pip install coveralls
+        python -m pip install coveralls==2.2.0
         coveralls --service=github
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
