@@ -32,9 +32,9 @@ def _parse_args():
                                      add_help=False,
                                      formatter_class=formatter)
     parser_group = parser.add_argument_group("Arguments")
-    parser_group.add_argument("-i", "--in_dir", required=True, type=str,
+    parser_group.add_argument("-i", "--in-dir", required=True, type=str,
                               help="Directory of a DICOM source. Required.")
-    parser_group.add_argument("-o", "--out_dir", default="./out", type=str,
+    parser_group.add_argument("-o", "--out-dir", default="./out", type=str,
                               help="Output directory. Default: ./out")
     parser_group.add_argument("-v", "--verbosity", action="count", default=0,
                               help="Increase verbosity")

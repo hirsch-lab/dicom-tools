@@ -18,15 +18,15 @@ def _run(args):
 
 
 def _parse_args():
-    description = "Copy DICOM files without pixel data."
+    description = ("Copy DICOM files without pixel data.")
     formatter = argparse.RawDescriptionHelpFormatter
     parser = argparse.ArgumentParser(description=description,
                                      add_help=False,
                                      formatter_class=formatter)
     parser_group = parser.add_argument_group("Arguments")
-    parser_group.add_argument("-i", "--in_dir", required=True,
+    parser_group.add_argument("-i", "--in-dir", required=True,
                               help="Directory of a dicom source. Required.")
-    parser_group.add_argument("-o", "--out_dir", default="./out",
+    parser_group.add_argument("-o", "--out-dir", default="./out",
                               help="Desination directory. Default: './out'")
     parser_group.add_argument("-v", "--verbosity", action="count",
                               help="Increase verbosity")

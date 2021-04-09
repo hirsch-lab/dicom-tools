@@ -20,7 +20,7 @@ def _parse_args():
                                      add_help=False,
                                      formatter_class=formatter)
     parser_group = parser.add_argument_group("Arguments")
-    parser_group.add_argument("-i", "--in_file", required=True,
+    parser_group.add_argument("-i", "--in-file", required=True,
                               help=("A DICOM file or directory of containing "
                                     "a DICOM series. Required."))
     parser_group.add_argument("-v", "--verbosity", action="count", default=0,
