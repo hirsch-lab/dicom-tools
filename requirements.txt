@@ -3,6 +3,9 @@
 pydicom>=2.1            # DICOM data structure for python
 pandas>=1.1             # Data analysis library
 progressbar2            # To indicate progress
-pytest                  # To run unittests
-pytest-cov              # For test-coverage
 mypy>=0.700             # For static code analysis
+
+coverage==5.5
+pytest==6.2.1
+pytest-cov==2.11.1
+# coveralls==2.2.0

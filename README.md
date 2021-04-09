@@ -1,14 +1,17 @@
 # dicom-tools
 
+
+[![Python 3.6+](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
+[![Unit tests](https://github.com/hirsch-lab/dicom-tools/actions/workflows/unittest.yml/badge.svg)](https://github.com/hirsch-lab/dicom-tools/actions/workflows/unittest.yml)
 [![License](https://img.shields.io/pypi/l/roc-utils)](https://github.com/hirsch-lab/dicom-tools/blob/main/LICENSE)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Coverage Status](https://coveralls.io/repos/github/hirsch-lab/dicom-tools/badge.svg?branch=develop)](https://coveralls.io/github/hirsch-lab/dicom-tools?branch=develop)
 
 Collection of command line utilities to operate on DICOM data.
 
 ## Setup
 
 
-The tools are written entirely in Python. It is recommended to use Python version: 3.8+. 
+The tools are written entirely in Python (version >=3.6)
 
 Download the repository and install required packages:
 
@@ -120,5 +123,5 @@ mypy "dicom_tools" --ignore-missing-imports --allow-redefinition
 
 [DICOM standard](https://www.dicomstandard.org/current)  
 [DICOM dictionary browser](https://dicom.innolitics.com/ciods)  
-[Pydicom](https://pydicom.github.io/) ([docs](https://pydicom.github.io/pydicom/stable/), [api docs](https://dicomweb-client.readthedocs.io/en/latest/  
+[Pydicom](https://pydicom.github.io/) ([docs](https://pydicom.github.io/pydicom/stable/), [api docs](https://dicomweb-client.readthedocs.io/en/latest/))   
 [Python type checking](https://realpython.com/python-type-checking)

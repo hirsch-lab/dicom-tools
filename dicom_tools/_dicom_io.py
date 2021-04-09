@@ -18,7 +18,10 @@ _logger = logging.getLogger(_LOGGER_ID)
 
 # Run static type checking with the following command:
 # mypy _utils.py --ignore-missing-imports --allow-redefinition
-from typing import TypeVar, Optional, Tuple, List, Callable, Any, Protocol
+from typing import TypeVar, Optional, Tuple, List, Callable, Any
+# Protocol is part of the typing module in Python 3.8+,
+# but it remains available for older Python versions.
+from typing_extensions import Protocol
 PathLike = TypeVar("PathLike", str, Path)
 OptionalPathList = Optional[List[Path]]
 OptionalFilter = Optional[Callable[[PathLike], bool]]

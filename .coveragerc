@@ -1,10 +1,12 @@
 # .coveragerc to control coverage.py
-# https://coverage.readthedocs.io/en/coverage-5.5/config.html
+# https://coverage.readthedocs.io/en/coverage-5.5/config.html
 [run]
 branch = True
 include =
     dicom_tools/*
     #*/scripts/*
+# Required for coveralls:
+# relative_files = True
 
 [report]
 # Regular expressions (!) for lines to exclude from consideration
