@@ -1,14 +1,14 @@
 # dicom-tools
 
 [![License](https://img.shields.io/pypi/l/roc-utils)](https://github.com/hirsch-lab/dicom-tools/blob/main/LICENSE)
-[![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.6+](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
 
 Collection of command line utilities to operate on DICOM data.
 
 ## Setup
 
 
-The tools are written entirely in Python. It is recommended to use Python version: 3.8+. 
+The tools are written entirely in Python (version >=3.6)
 
 Download the repository and install required packages:
 

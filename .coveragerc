@@ -1,5 +1,5 @@
 # .coveragerc to control coverage.py
-# https://coverage.readthedocs.io/en/coverage-5.5/config.html
+# https://coverage.readthedocs.io/en/coverage-5.5/config.html
 [run]
 branch = True
 include =
