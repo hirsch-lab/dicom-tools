@@ -1,0 +1,26 @@
+# .coveragerc to control coverage.py
+# https://coverage.readthedocs.io/en/coverage-5.5/config.html
+[run]
+branch = True
+include =
+    dicom_tools/*
+    #*/scripts/*
+
+[report]
+# Regular expressions (!) for lines to exclude from consideration
+exclude_lines =
+    # Re-enable the standard pragma
+    pragma: no cover
+
+    # Don't complain if tests don't hit defensive assertion code
+    raise AssertionError
+    raise NotImplementedError
+
+    # Don't complain if non-runnable code isn't run
+    if 0:
+    if __name__ == .__main__.:
+
+ignore_errors = True
+
+[html]
+directory = output/coverage
