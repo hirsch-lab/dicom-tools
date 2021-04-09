@@ -40,7 +40,7 @@ jobs:
       # I summarized my experiences in this post:
       # https://github.com/coverallsapp/github-action/issues/30#issuecomment-816366758
       run: |
-        python -m pip install coveralls==2.2.0
-        coveralls
+        python -m pip install coveralls==3.
+        coveralls --service=github
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
