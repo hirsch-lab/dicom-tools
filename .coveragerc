@@ -5,6 +5,8 @@ branch = True
 include =
     dicom_tools/*
     #*/scripts/*
+# Required for coveralls:
+relative_files = True
 
 [report]
 # Regular expressions (!) for lines to exclude from consideration
