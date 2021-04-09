@@ -1,7 +1,9 @@
 # dicom-tools
 
-[![License](https://img.shields.io/pypi/l/roc-utils)](https://github.com/hirsch-lab/dicom-tools/blob/main/LICENSE)
+
 [![Python 3.6+](https://img.shields.io/badge/python-3.6+-blue.svg)](https://www.python.org/downloads/)
+[![Unit tests](https://github.com/hirsch-lab/dicom-tools/actions/workflows/unittest.yml/badge.svg)](https://github.com/hirsch-lab/dicom-tools/actions/workflows/unittest.yml)
+[![License](https://img.shields.io/pypi/l/roc-utils)](https://github.com/hirsch-lab/dicom-tools/blob/main/LICENSE)
 
 Collection of command line utilities to operate on DICOM data.
 
