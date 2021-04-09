@@ -27,7 +27,6 @@ jobs:
         python -m pip install --upgrade pip
         python -m pip install pytest
         python -m pip install pytest-cov
-        python -m pip install coveralls
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         python -m pip install -e .
     - name: Test with pytest
@@ -35,6 +34,12 @@ jobs:
         pytest --cov --cov-report=xml --cov-report=html
 
     - name: Upload coverage data to coveralls.io
-      run: coveralls
+      # https://github.com/lemurheavy/coveralls-public/issues/1435#issuecomment-763357004
+      # https://github.com/coverallsapp/github-action/issues/30#issuecomment-791094512
+      # https://github.com/coverallsapp/github-action/issues/30#issuecomment-612523058
+      # python -m pip install coveralls=2.2.0
+      run: |
+        python -m pip install coveralls
+        coveralls --service=github
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
