@@ -9,7 +9,8 @@ def _run(args):
     setup_logging(verbosity=args.verbosity)
     copy_from_file(in_dir=args.in_dir,
                    out_dir=args.out_dir,
-                   list_file=args.list_file)
+                   list_file=args.list_file,
+                   flat_copy=args.flat_copy)
 
 
 def _parse_args():
@@ -23,6 +24,8 @@ def _parse_args():
                         help="Directory of a dicom source. Required.")
     parser_group.add_argument("-o", "--out-dir", default="./out",
                         help="Desination directory. Default: './out'")
+    parser_group.add_argument("--flat-copy", action="store_true",
+                              help="Ignore subfolder hierarchy.")
     parser_group.add_argument("-v", "--verbosity", action="count",
                               help="Increase verbosity")
     parser_group.add_argument("-h", "--help", action="help",
