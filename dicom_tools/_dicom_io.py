@@ -33,6 +33,7 @@ OptionalPrinter = Optional[CallablePrinter]
 def copy_from_file(in_dir: PathLike,
                    out_dir: PathLike,
                    list_file: PathLike,
+                   list_column: Optional[str]=None,
                    flat_copy: bool=False,
                    raise_if_missing: bool=True,
                    show_progress: bool=True) -> OptionalPathList:
@@ -44,9 +45,16 @@ def copy_from_file(in_dir: PathLike,
         _logger.error("List file does not exist: %s", list_file)
         return None
 
-    df = pd.read_csv(list_file, comment="#")
-    # Pick first column
-    to_copy = df.iloc[:,0]
+    if list_column is not None:
+        df = pd.read_csv(list_file, comment="#")
+        if list_column not in df:
+            _logger.error("List file misses a column named '%s'!", list_column)
+            return None
+        to_copy = df[list_column]
+    else:
+        df = pd.read_csv(list_file, comment="#", header=None)
+        # Pick first column
+        to_copy = df.iloc[:,0]
     return copy_from_list(in_dir=in_dir,
                           out_dir=out_dir,
                           to_copy=to_copy,

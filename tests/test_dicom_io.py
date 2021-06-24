@@ -71,7 +71,7 @@ class TestCopyFromList(TestCopyFromListBase):
                                  raise_if_missing=False,
                                  show_progress=False)
         self.check_results(list_in=to_copy, list_ret=ret)
-        self.assertEqual(len(cm.output), 2) # Show exactly two warnings.
+        self.assertEqual(len(cm.output), 2) # Show exactly two warnings.
 
 
 class TestCopyFromFile(TestCopyFromListBase):
@@ -79,12 +79,35 @@ class TestCopyFromFile(TestCopyFromListBase):
         to_copy = self.test_files[::2].copy()
         to_copy = pd.Series(to_copy)
         list_file = self.in_dir/"files_to_copy.csv"
-        to_copy.to_csv(list_file, index=False)
+        to_copy.to_csv(list_file, index=False, header=False)
+
         ret = copy_from_file(in_dir=self.in_dir,
                              out_dir=self.out_dir,
                              list_file=list_file,
                              show_progress=False,)
         self.check_results(list_in=to_copy, list_ret=ret)
+
+    def test_copy_csv(self):
+        to_copy = self.test_files[::2].copy()
+        df = pd.concat([pd.Series(range(len(to_copy))),
+                        pd.Series(to_copy)], keys=["Data", "Paths"], axis=1)
+        list_file = self.in_dir/"files_to_copy.csv"
+        df.to_csv(list_file)
+
+        ret = copy_from_file(in_dir=self.in_dir,
+                             out_dir=self.out_dir,
+                             list_file=list_file,
+                             list_column="Paths",
+                             show_progress=False,)
+        self.check_results(list_in=to_copy, list_ret=ret)
+
+        with self.assertLogs("dicom", level=logging.ERROR) as cm:
+            ret = copy_from_file(in_dir=self.in_dir,
+                                 out_dir=self.out_dir,
+                                 list_file=list_file,
+                                 list_column="WrongColumn",
+                                 show_progress=False,)
+            self.assertIsNone(ret)
 
     def test_copy_flat(self):
         # In files:     <in_dir>/<file_name>
