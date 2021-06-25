@@ -1,0 +1,10 @@
+# pyproject.toml
+
+# pytest settings
+[tool.pytest.ini_options]
+filterwarnings = [
+  #"error:::",  # turn warnings into errors
+  # Suppress a warning, similar to this one here:
+  # https://github.com/ipython/ipykernel/issues/469
+  "ignore::DeprecationWarning:ipykernel",
+]

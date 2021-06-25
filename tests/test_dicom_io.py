@@ -27,13 +27,15 @@ class TestCopyFromListBase(unittest.TestCase):
         shutil.rmtree(self.in_dir)
         shutil.rmtree(self.out_dir)
 
-    def check_results(self, list_in, list_ret):
+    def check_results(self, list_in, list_ret, out_dir=None):
+        if out_dir is None:
+            out_dir = self.out_dir
         self.assertIsNotNone(list_ret)
         self.assertIsInstance(list_ret, list)
         for filepath in list_ret:
             self.assertIsInstance(filepath, Path)
             self.assertTrue(filepath.is_file())
-        list_copied = [f.name for f in list_ret]
+        list_copied = [str(f.relative_to(out_dir)) for f in list_ret]
         self.assertListEqual(list(list_in), list(list_copied))
 
 
@@ -69,7 +71,7 @@ class TestCopyFromList(TestCopyFromListBase):
                                  raise_if_missing=False,
                                  show_progress=False)
         self.check_results(list_in=to_copy, list_ret=ret)
-        self.assertEqual(len(cm.output), 2) # Show exactly two warnings.
+        self.assertEqual(len(cm.output), 2) # Show exactly two warnings.
 
 
 class TestCopyFromFile(TestCopyFromListBase):
@@ -77,12 +79,60 @@ class TestCopyFromFile(TestCopyFromListBase):
         to_copy = self.test_files[::2].copy()
         to_copy = pd.Series(to_copy)
         list_file = self.in_dir/"files_to_copy.csv"
-        to_copy.to_csv(list_file, index=False)
+        to_copy.to_csv(list_file, index=False, header=False)
+
         ret = copy_from_file(in_dir=self.in_dir,
                              out_dir=self.out_dir,
                              list_file=list_file,
                              show_progress=False,)
         self.check_results(list_in=to_copy, list_ret=ret)
+
+    def test_copy_csv(self):
+        to_copy = self.test_files[::2].copy()
+        df = pd.concat([pd.Series(range(len(to_copy))),
+                        pd.Series(to_copy)], keys=["Data", "Paths"], axis=1)
+        list_file = self.in_dir/"files_to_copy.csv"
+        df.to_csv(list_file)
+
+        ret = copy_from_file(in_dir=self.in_dir,
+                             out_dir=self.out_dir,
+                             list_file=list_file,
+                             list_column="Paths",
+                             show_progress=False,)
+        self.check_results(list_in=to_copy, list_ret=ret)
+
+        with self.assertLogs("dicom", level=logging.ERROR) as cm:
+            ret = copy_from_file(in_dir=self.in_dir,
+                                 out_dir=self.out_dir,
+                                 list_file=list_file,
+                                 list_column="WrongColumn",
+                                 show_progress=False,)
+            self.assertIsNone(ret)
+
+    def test_copy_flat(self):
+        # In files:     <in_dir>/<file_name>
+        # To copy spec: <in_dir_name>/<file_name>
+        # No flat copy: <out_dir>/<in_dir_name>/<file_name>
+        # Flat copy:    <out_dir>/<file_name>
+        to_copy_flat = self.test_files[::2].copy()
+        to_copy = [self.in_dir.name + "/" + f for f in to_copy_flat]
+        to_copy = pd.Series(to_copy)
+        list_file = self.in_dir/"files_to_copy.csv"
+        to_copy.to_csv(list_file, index=False, header=False)
+
+        ret = copy_from_file(in_dir=self.in_dir.parent,
+                             out_dir=self.out_dir,
+                             list_file=list_file,
+                             flat_copy=False,
+                             show_progress=False,)
+        self.check_results(list_in=to_copy, list_ret=ret)
+
+        ret = copy_from_file(in_dir=self.in_dir.parent,
+                             out_dir=self.out_dir,
+                             list_file=list_file,
+                             flat_copy=True,
+                             show_progress=False,)
+        self.check_results(list_in=to_copy_flat, list_ret=ret)
 
     def test_copy_invalid_list_file(self):
         to_copy = self.test_files[::2].copy()

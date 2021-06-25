@@ -33,6 +33,8 @@ OptionalPrinter = Optional[CallablePrinter]
 def copy_from_file(in_dir: PathLike,
                    out_dir: PathLike,
                    list_file: PathLike,
+                   list_column: Optional[str]=None,
+                   flat_copy: bool=False,
                    raise_if_missing: bool=True,
                    show_progress: bool=True) -> OptionalPathList:
     """
@@ -43,12 +45,20 @@ def copy_from_file(in_dir: PathLike,
         _logger.error("List file does not exist: %s", list_file)
         return None
 
-    df = pd.read_csv(list_file, comment="#")
-    # Pick first column
-    to_copy = df.iloc[:,0]
+    if list_column is not None:
+        df = pd.read_csv(list_file, comment="#")
+        if list_column not in df:
+            _logger.error("List file misses a column named '%s'!", list_column)
+            return None
+        to_copy = df[list_column]
+    else:
+        df = pd.read_csv(list_file, comment="#", header=None)
+        # Pick first column
+        to_copy = df.iloc[:,0]
     return copy_from_list(in_dir=in_dir,
                           out_dir=out_dir,
                           to_copy=to_copy,
+                          flat_copy=flat_copy,
                           raise_if_missing=raise_if_missing,
                           show_progress=show_progress)
 
@@ -56,13 +66,13 @@ def copy_from_file(in_dir: PathLike,
 def copy_from_list(in_dir: PathLike,
                    out_dir: PathLike,
                    to_copy: List[str],
+                   flat_copy: bool=False,
                    raise_if_missing: bool=True,
                    show_progress: bool=True) -> OptionalPathList:
     """
     Note: This function is generic, it copies all files or folders specified
     in the input list, not just DICOMs.
     """
-
     in_dir = Path(in_dir)
     out_dir = Path(out_dir)
     if not check_in_dir(in_dir):
@@ -80,10 +90,14 @@ def copy_from_list(in_dir: PathLike,
     entries_copied = []
     for i, filename in enumerate(to_copy):
         src = in_dir / filename
-        dst = out_dir / filename
+        if flat_copy:
+            dst = out_dir / Path(filename).name
+        else:
+            dst = out_dir / filename
 
         # Copy directory robustly.
         # Source: http://stackoverflow.com/questions/1994488/ (user tzot)
+        ensure_out_dir(dst.parent, raise_error=True)
         if not dst.exists():
             _logger.info("Copying content: %s...", filename)
             try:
