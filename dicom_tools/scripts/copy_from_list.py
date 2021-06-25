@@ -25,7 +25,7 @@ def _parse_args():
                         help="Directory of a dicom source.")
     parser_group.add_argument("-o", "--out-dir", default="./out",
                         help="Desination directory. Default: './out'")
-    parser_group.add_argument("--list-column", tpye=str, default=None,
+    parser_group.add_argument("--list-column", type=str, default=None,
                               help=("Specify a column that contains the file "
                                     "filter data in the list file. If this "
                                     "option is provided, the list file will be "
