@@ -1,3 +1,4 @@
+import re
 import logging
 from pathlib import Path
 import progressbar as pg # Package: progressbar2
@@ -42,11 +43,15 @@ def ensure_out_dir(out_dir: PathLike, raise_error: bool=False) -> bool:
 
 def search_files(in_dir: PathLike,
                  pattern: Optional[str]=None,
+                 regex: Optional[str]=None,
                  n_files: Optional[int]=None) -> List[Path]:
     if pattern is None:
         pattern = "*.*"
     in_dir = Path(in_dir)
     files = sorted(list(in_dir.glob(pattern)))
+    if regex:
+        code = re.compile(regex)
+        files = [f for f in files if code.match(str(f))]
     if n_files is not None and n_files > 0:
         files = files[:n_files]
     if len(files) == 0:
