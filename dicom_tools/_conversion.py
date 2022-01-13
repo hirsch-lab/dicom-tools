@@ -111,7 +111,7 @@ def _ndarray2dicom(data: np.ndarray,
     ds.Columns = data.shape[1]
     ds.InstanceNumber = instance_number
 
-    # The data!
+    # The data! ################################################# fix data.tobytes()!
     ds.PixelData = data.tobytes()
 
     # ds.ImagePositionPatient = r"0\0\1"
