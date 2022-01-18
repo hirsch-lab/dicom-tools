@@ -7,10 +7,11 @@ import pydicom as dicom
 
 from pathlib import Path
 
-from ._utils import (search_files, create_progress_bar, ensure_out_dir)
+from ._utils import (search_files, create_progress_bar, ensure_out_dir, resolve_multiframe)
 
 _LOGGER_ID = "dicom"
 _logger = logging.getLogger(_LOGGER_ID)
+
 
 # Run static type checking with the following command:
 # mypy _utils.py --ignore-missing-imports --allow-redefinition
@@ -92,7 +93,7 @@ def _ndarray2dicom(data: np.ndarray,
     ds.is_implicit_VR = False
 
     ds.SOPClassUID = _infer_sopclass_uid(storage_type)
-    ds.PatientName = "N/A"
+    ds.PatientName = "Hans"
     ds.PatientID = "N/A"
 
     ds.Modality = modality
@@ -111,8 +112,8 @@ def _ndarray2dicom(data: np.ndarray,
     ds.Columns = data.shape[1]
     ds.InstanceNumber = instance_number
 
-    # The data! ################################################# fix data.tobytes()!
     ds.PixelData = data.tobytes()
+
 
     # ds.ImagePositionPatient = r"0\0\1"
     # ds.ImageOrientationPatient = r"1\0\0\0\-1\0"
@@ -140,6 +141,7 @@ def stack2dicom(in_dir: PathLike,
                 show_progress: bool=True) -> None:
     in_dir = Path(in_dir)
     out_dir = Path(out_dir)
+    resolve_multiframe(in_dir=in_dir)
     paths = search_files(in_dir=in_dir,
                          pattern=pattern,
                          regex=regex,
@@ -165,3 +167,14 @@ def stack2dicom(in_dir: PathLike,
     progress.finish()
 
 
+def dicom2nifti():
+    pass
+
+def nifti2dicom():
+    pass
+
+def stack2nifti():
+    pass
+
+def dicom2stack():
+    pass

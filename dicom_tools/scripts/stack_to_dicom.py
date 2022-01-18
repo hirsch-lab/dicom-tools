@@ -70,7 +70,8 @@ def _run(args):
 def _parse_args():
     description = ("Convert a stack of images into a multi-file DICOM.\n"
                    "Any image format supported by OpenCV (cv2) can be.\n"
-                   "processed.\n\n"
+                   "processed. Potential multi-frame images are split\n"
+                   "into singles and processed normally.\n\n"
                    "It is possible to augment the DICOM files by additional\n"
                    "data elements. For instance, one can use either\n"
                    "    --attribute KEY VALUE\n"
