@@ -2,6 +2,7 @@ import logging
 import cv2 as cv
 import numpy as np
 import pydicom as dicom
+from PIL import Image
 
 #import nibabel as nib
 
@@ -24,7 +25,9 @@ def _read_image(path: PathLike) -> Optional[np.ndarray]:
     if not path.is_file():
         _logger.error("File does not exist: %s", path)
         return None
-    img = cv.imread(str(path), flags=cv.IMREAD_GRAYSCALE)
+    img = Image.open(str(path)).convert('L')
+    img.load()
+    img = np.asarray(img, dtype="int8")
     if img is None:
         _logger.error("Cannot read image: %s", path)
         return None
@@ -93,7 +96,7 @@ def _ndarray2dicom(data: np.ndarray,
     ds.is_implicit_VR = False
 
     ds.SOPClassUID = _infer_sopclass_uid(storage_type)
-    ds.PatientName = "Hans"
+    ds.PatientName = "N/A"
     ds.PatientID = "N/A"
 
     ds.Modality = modality
@@ -101,10 +104,13 @@ def _ndarray2dicom(data: np.ndarray,
     ds.StudyInstanceUID = dicom.uid.generate_uid()
     ds.FrameOfReferenceUID = dicom.uid.generate_uid()
 
+    ds.PhotometricInterpretation = "MONOCHROME1"
+
+
     ds.BitsStored = data.itemsize*8
     ds.BitsAllocated = data.itemsize*8
     ds.SamplesPerPixel = 1
-    ds.HighBit = 15
+    ds.HighBit = ds.BitsStored - 1
 
     ds.ImagesInAcquisition = "1"
 
@@ -122,8 +128,8 @@ def _ndarray2dicom(data: np.ndarray,
     # ds.RescaleIntercept = 0
     # ds.RescaleSlope = 1
     # ds.PixelSpacing = r"1\1"
-    # ds.PhotometricInterpretation = "MONOCHROME2"
-    # ds.PixelRepresentation = 1
+
+    ds.PixelRepresentation = 0
 
     if attributes:
         _apply_attributes(data=ds,
