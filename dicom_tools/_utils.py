@@ -1,5 +1,7 @@
 import re
 import logging
+import pydicom
+import dicom2nifti
 from pathlib import Path
 import progressbar as pg # Package: progressbar2
 import os
@@ -76,6 +78,8 @@ def search_files(in_dir: PathLike,
         _logger.error("No files found: %s", in_dir)
         _logger.error("Pattern: %s", pattern)
     return files
+
+
 
 
 def create_progress_bar(size: Optional[int]=None,

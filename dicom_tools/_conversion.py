@@ -1,10 +1,12 @@
 import logging
+import dicom2nifti
+import nibabel as nib
 import cv2 as cv
 import numpy as np
 import pydicom as dicom
 from PIL import Image
+from dicom2nifti import common
 
-#import nibabel as nib
 
 from pathlib import Path
 
@@ -25,9 +27,10 @@ def _read_image(path: PathLike) -> Optional[np.ndarray]:
     if not path.is_file():
         _logger.error("File does not exist: %s", path)
         return None
-    img = Image.open(str(path)).convert('L')
+    # check for RGB! if there exception! len(img.shape) > 1
+    img = Image.open(str(path))
     img.load()
-    img = np.asarray(img, dtype="int8")
+    img = np.asarray(img, dtype="uint8")
     if img is None:
         _logger.error("Cannot read image: %s", path)
         return None
@@ -104,7 +107,7 @@ def _ndarray2dicom(data: np.ndarray,
     ds.StudyInstanceUID = dicom.uid.generate_uid()
     ds.FrameOfReferenceUID = dicom.uid.generate_uid()
 
-    ds.PhotometricInterpretation = "MONOCHROME1"
+    ds.PhotometricInterpretation = "MONOCHROME2"
 
 
     ds.BitsStored = data.itemsize*8
@@ -129,7 +132,7 @@ def _ndarray2dicom(data: np.ndarray,
     # ds.RescaleSlope = 1
     # ds.PixelSpacing = r"1\1"
 
-    ds.PixelRepresentation = 0
+    ds.PixelRepresentation = 1 # needs to be adjusted depending on bit status (8bit = 0, 16bit = 1)
 
     if attributes:
         _apply_attributes(data=ds,
@@ -163,8 +166,6 @@ def stack2dicom(in_dir: PathLike,
         if img is None:
             _logger.error("Skipping image %d...", i)
             continue
-        # nifti = nib.Nifti1Image(img, affine=np.eye(4))
-        # nib.save(nifti, out_dir/(path.stem + ".nii"))
         ds = _ndarray2dicom(data=img,
                             attributes=attributes,
                             instance_number=i)
@@ -173,14 +174,70 @@ def stack2dicom(in_dir: PathLike,
     progress.finish()
 
 
-def dicom2nifti():
-    pass
+def dicom_2_nifti(in_dir: PathLike,
+                  out_dir: PathLike) -> None: # add compression and reorient arguments!
+    in_dir = Path(in_dir)
+    out_dir = Path(out_dir)
+    if not ensure_out_dir(out_dir):
+        return None
+    try:
+        # header = common.read_dicom_directory(in_dir, out_dir)
+        dicom2nifti.convert_directory(in_dir, out_dir, compression=True, reorient=False)
+    except:
+        _logger.error('Conversion to nifi failed dicom integrity compromised.\n'
+                      'Check the --help information of the dicoms_to_nifit function.\n\n')
 
-def nifti2dicom():
-    pass
+
+def nifti2dicom(in_dir: PathLike,
+              out_dir: PathLike,
+              pattern: Optional[str]=None,
+              regex: Optional[str] = None,
+              n_files: Optional[int] = None,
+              attributes: Optional[dicom.Dataset] = None,
+              show_progress: bool = True) -> None:
+
+    in_dir = Path(in_dir)
+    out_dir = Path(out_dir)
+    if pattern == None: # if no pattern is specified check for compressed nifti
+        pattern = "*.nii.gz"
+    paths = search_files(in_dir=in_dir,
+                         pattern=pattern,
+                         regex=regex,
+                         n_files=n_files)
+    if not ensure_out_dir(out_dir):
+        return None
+    progress1 = create_progress_bar(size=len(paths),
+                                   label="# Nifi files",
+                                   enabled=show_progress)
+    progress1.start()
+    for i, path in enumerate(paths):
+        try:
+            nii_file = nib.load(path)
+        except:
+            _logger.error('Nifti file {} could not be loaded.\n'
+                          'Default Nifti format: *.nii.gz\n'
+                          'If there is no compressed file present\n'
+                          'use: *.nii as pattern to call the function.\n\n'.format(path.stem))
+            continue
+        nii_array = np.asanyarray(nii_file.dataobj)
+        number_slices = nii_array.shape[2]
+        progress2 = create_progress_bar(size=number_slices,
+                                       label="DICOM conversion",
+                                       enabled=show_progress)
+        progress2.start()
+        for s in range(number_slices):
+            # array transpose to keep orientation
+            ds = _ndarray2dicom(data=nii_array[:,:,s].T,
+                                attributes=attributes,
+                                instance_number=int(s+1)
+                                )
+            ds.save_as(out_dir / (path.stem.rsplit(".")[0] + "_{}_".format(str(s)) + ".dcm"))
+            progress2.update(s)
+        progress2.finish()
+        progress1.update(i)
+    progress1.finish()
+
 
 def stack2nifti():
     pass
 
-def dicom2stack():
-    pass
