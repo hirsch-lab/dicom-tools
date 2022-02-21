@@ -175,16 +175,19 @@ def stack2dicom(in_dir: PathLike,
 
 
 def dicom_2_nifti(in_dir: PathLike,
-                  out_dir: PathLike) -> None: # add compression and reorient arguments!
+                  out_dir: PathLike,
+                  comp: Optional[bool]=True,
+                  reor: Optional[bool]=False) -> None:
+
     in_dir = Path(in_dir)
     out_dir = Path(out_dir)
     if not ensure_out_dir(out_dir):
         return None
     try:
         # header = common.read_dicom_directory(in_dir, out_dir)
-        dicom2nifti.convert_directory(in_dir, out_dir, compression=True, reorient=False)
+        dicom2nifti.convert_directory(in_dir, out_dir, compression=comp, reorient=reor)
     except:
-        _logger.error('Conversion to nifi failed dicom integrity compromised.\n'
+        _logger.error('Conversion to Nifti failed DICOM integrity compromised.\n'
                       'Check the --help information of the dicoms_to_nifit function.\n\n')
 
 
@@ -198,8 +201,6 @@ def nifti2dicom(in_dir: PathLike,
 
     in_dir = Path(in_dir)
     out_dir = Path(out_dir)
-    if pattern == None: # if no pattern is specified check for compressed nifti
-        pattern = "*.nii.gz"
     paths = search_files(in_dir=in_dir,
                          pattern=pattern,
                          regex=regex,
@@ -236,8 +237,3 @@ def nifti2dicom(in_dir: PathLike,
         progress2.finish()
         progress1.update(i)
     progress1.finish()
-
-
-def stack2nifti():
-    pass
-
