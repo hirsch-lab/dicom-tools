@@ -7,8 +7,8 @@ import pydicom as dicom
 
 from dicom_tools._utils import setup_logging
 from dicom_tools._conversion import nifti2dicom
-from dicom_tools.stack_to_dicom import _dicom_attributes, _create_template_attribute_file
 from dicom_tools._dicom_dump import dump_to_yaml, from_yaml
+from stack_to_dicom import _dicom_attributes, _create_template_attribute_file
 
 LOGGER_ID = "back2dicom"
 _logger = logging.getLogger(LOGGER_ID)
@@ -68,9 +68,10 @@ def _parse_args():
                        help=("A folder containing the images."))
     group.add_argument("-o", "--out-dir", default="./out", type=str,
                        help=("Output directory. Default: ./out"))
-    group.add_argument("-p", "--pattern", type=str, default="*.*",
+    group.add_argument("-p", "--pattern", type=str, default="*.nii.gz",
                        help=("Glob-pattern to filter the files in the\n"
-                             "input directory. Default: '*.*'"))
+                             "input directory. Default: '*.nii.gz'\n"
+                             "uncompressed nifti: '*.nii'"))
     group.add_argument("--regex", type=str, default=None,
                        help=("Regular expression pattern to filter the\n"
                              "files in the input directory. Overrides\n"
