@@ -30,10 +30,10 @@ def _run(args):
     _dicom_attributes(ds.file_meta, args.meta_attribute)
 
     nifti2dicom(in_dir=args.in_dir,
-                  out_dir=args.out_dir,
-                  pattern=args.pattern,
-                  regex=args.regex,
-                  n_files=None)
+                out_dir=args.out_dir,
+                pattern=args.pattern,
+                regex=args.regex,
+                n_files=None)
 
 
 def _parse_args():

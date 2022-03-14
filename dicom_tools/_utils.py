@@ -52,7 +52,7 @@ def resolve_multiframe(in_dir: PathLike) -> None:
             os.remove(os.path.join(in_dir, i))
         elif i.lower().endswith(('.png', '.jpg', '.jpeg', '.tif', '.tiff')):
             img = Image.open(os.path.join(in_dir, i))
-            if img.n_frames > 1:
+            if getattr(img, "n_frames", 1) > 1:
                 for idx, page in enumerate(ImageSequence.Iterator(img)):
                     page.save(os.path.join(in_dir, i.rsplit('.', 1)[0] + '_slice%d.tif' % idx)) # save to corresponding original format (currently only tiff)
                 try:

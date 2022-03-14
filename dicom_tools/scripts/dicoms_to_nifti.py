@@ -3,15 +3,33 @@ sys.path.append("/Users/sandroroth/Documents/Pycharm/dicom_tool/dicom-tools")
 
 import logging
 import argparse
+import os
 
+from pydicom import dcmread
+from pathlib import Path
 from dicom_tools._utils import setup_logging
 from dicom_tools._conversion import dicom_2_nifti
+from dicom_tools._dicom_dump import dump_to_yaml
 
 LOGGER_ID = "nifti"
 _logger = logging.getLogger(LOGGER_ID)
 
 def _run(args):
     setup_logging(verbosity=args.verbosity + 1)
+    if args.create_attribute_file:
+        files = sorted(os.listdir(Path(args.in_dir)))
+        for f in files:
+            try:
+                ds = dcmread(os.path.join(Path(args.in_dir), f))
+                _logger.info("The file {} could be read by pydicom".format(f))
+                ret = dump_to_yaml(path= args.create_attribute_file, data=ds)
+                if ret:
+                    _logger.info("File written: %s", args.create_attribute_file)
+                break
+            except:
+                _logger.error("The file {} could not be read by pydicom".format(f))
+        exit(1)
+
     dicom_2_nifti(in_dir=args.in_dir,
                   out_dir=args.out_dir,
                   comp=args.compression,
@@ -45,8 +63,15 @@ def _parse_args():
     group.add_argument("-f", "--force", action="store_true",
                        help="Force writing of output files.")
 
-    # Nifti
-    group = parser.add_argument_group("Nifti")
+    # DICOM
+    group = parser.add_argument_group(("DICOM"))
+    group.add_argument("--create-attribute-file", default=None, type=str,
+                       nargs="?", const="./out/current_dicom_attributes.yaml",
+                       help="Creates an attribute file of the first dicom-file\n"
+                            "inside the given folder.")
+
+    # NIFTI
+    group = parser.add_argument_group("NIFTI")
     group.add_argument("-c", "--compression", default=True, type=bool,
                        help=("Compression to nii.gz. Default: True"))
     group.add_argument("-r", "--reorient", default=False, type=bool,
