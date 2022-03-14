@@ -48,7 +48,6 @@ def _create_template_attribute_file(path, force=False):
 
 def _run(args):
     setup_logging(verbosity=args.verbosity+1)
-
     if args.create_attribute_file:
         _create_template_attribute_file(path=args.create_attribute_file,
                                         force=args.force)
@@ -59,6 +58,7 @@ def _run(args):
     else:
         ds = dicom.dataset.Dataset()
         ds.file_meta = dicom.dataset.FileMetaDataset()
+
     _dicom_attributes(ds, args.attribute)
     _dicom_attributes(ds.file_meta, args.meta_attribute)
 
@@ -66,7 +66,9 @@ def _run(args):
                 out_dir=args.out_dir,
                 pattern=args.pattern,
                 regex=args.regex,
-                n_files=None)
+                n_files=None,
+                pix_depth=args.depth,
+                attributes=ds)
 
 
 def _parse_args():
@@ -110,6 +112,9 @@ def _parse_args():
                              "the glob expression --pattern."))
     group.add_argument("-f", "--force", action="store_true",
                        help="Force writing of output files.")
+    group.add_argument("-d", "--depth", type=str, default=None,
+                       help=("Pixel depth for input image \n"
+                             "normally dealt by PIL and numpy. Default: None"))
 
     # DICOM
     group = parser.add_argument_group("DICOM")
