@@ -1,6 +1,3 @@
-import sys
-sys.path.append("/Users/sandroroth/Documents/Pycharm/dicom_tool/dicom-tools")
-
 import logging
 import argparse
 import pydicom as dicom
@@ -33,8 +30,8 @@ def _run(args):
                 out_dir=args.out_dir,
                 pattern=args.pattern,
                 regex=args.regex,
-                n_files=None)
-
+                n_files=None,
+                attributes=ds)
 
 def _parse_args():
     description = ("Converting Nifti file back to DICOM images.\n"

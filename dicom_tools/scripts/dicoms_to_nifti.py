@@ -1,6 +1,3 @@
-import sys
-sys.path.append("/Users/sandroroth/Documents/Pycharm/dicom_tool/dicom-tools")
-
 import logging
 import argparse
 import os
