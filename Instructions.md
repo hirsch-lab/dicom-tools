@@ -29,6 +29,10 @@ If random files are present in the folder the conversion fails. The function is
 also able to save header information from existing dicom files.
 
 ```bash
+# Creating yaml file from dicom header (no conversion to nifti) save default: /out/current_dicom_attributes.yaml
+python dicom_tools/scripts/dicoms_to_nifti.py -i /path/to/dicom/folder ---create-attribute-file
+python dicom_tools/scripts/dicoms_to_nifti.py -i /path/to/dicom/folder ---create-attribute-file /output/path/and/name.yaml
+
 # Converting to default output folder (dicom-tools/out)
 python dicom_tools/scripts/dicoms_to_nifti.py -i /path/to/dicom/folder
 
