@@ -12,7 +12,9 @@ def _run(args):
     root = logging.getLogger()
     setup_logging(verbosity=args.verbosity+1)
     data = create_dataset_summary(in_dir=args.in_dir,
-                                  n_series_max=args.n_max)
+                                  n_series_max=args.n_max,
+                                  glob_expr=args.glob,
+                                  reg_expr=args.regex)
     out_dir = Path(args.out_dir)
     if data is not None and ensure_out_dir(out_dir=out_dir):
         outpath = out_dir / "dicom_summary.csv"
@@ -27,7 +29,7 @@ def _run(args):
 def _parse_args():
     description = ("Recursively search for DICOM data in a folder and "
                    "summarize the data in a .csv")
-    formatter = argparse.RawDescriptionHelpFormatter
+    formatter = argparse.RawTextHelpFormatter
     parser = argparse.ArgumentParser(description=description,
                                      add_help=False,
                                      formatter_class=formatter)
@@ -38,6 +40,16 @@ def _parse_args():
                               help="Output directory. Default: ./out")
     parser_group.add_argument("-v", "--verbosity", action="count", default=0,
                               help="Increase verbosity")
+    parser_group.add_argument("-g", "--glob", type=str, default=None,
+                              help=("Glob filter expression.\n"
+                                    "Example: --glob='patID/**/*.dcm'.\n"
+                                    "See also: --regex"))
+    parser_group.add_argument("-r", "--regex", type=str, default=None,
+                              help=("Filter files that match a regexp.\n"
+                                    "- If both --glob and --regex are set:\n"
+                                    "  --glob is evaluated first, then --regex\n"
+                                    "- If neither --glob nor --regex are set:\n"
+                                    "  Default choice is --glob=**/*.dcm"))
     parser_group.add_argument("-n", "--n-max", type=int, default=None,
                               help="Limit the number DICOM entries.")
     parser_group.add_argument("-h", "--help", action="help",

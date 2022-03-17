@@ -1,3 +1,4 @@
+import re
 import errno
 import shutil
 import logging
@@ -13,6 +14,7 @@ from ._utils import (check_in_dir,
 
 _NA = "N/A"
 _DICOM_SUFFIX = ".dcm"
+_NO_FILES = [ ".DS_Store", ]
 _LOGGER_ID = "dicom"
 _logger = logging.getLogger(_LOGGER_ID)
 
@@ -255,14 +257,21 @@ def print_info(path: PathLike,
 
 
 def create_dataset_summary(in_dir: PathLike,
-                           glob_expr: str=f"**/*{_DICOM_SUFFIX}",
+                           glob_expr: Optional[str]=None,
+                           reg_expr: Optional[str]=None,
                            n_series_max: Optional[int]=None,
                            show_progress: bool=True) -> pd.DataFrame:
     """
     Recursively search for DICOM data in a folder and represent the data
     as a pandas DataFrame.
     """
-    in_dir = Path(in_dir)
+    def _safe_read(file_path):
+        dcm = None
+        try:
+            dcm = dicom.read_file(file_path)
+        except dicom.errors.InvalidDicomError:
+            _logger.info("Ignoring file %s", file_path)
+        return dcm
 
     def _canonical_datetime(date: str, time:str) -> datetime:
         if len(time.split(".")) > 1:
@@ -308,10 +317,37 @@ def create_dataset_summary(in_dir: PathLike,
             value = default
         return value
 
+    in_dir = Path(in_dir)
+    if not in_dir.is_dir():
+        _logger.error("Input folder does not exist: %s", in_dir)
+        exit(-1)
+
+    # Choose files.
+    # - if neither glob_expr nor reg_expr is provided: search all .dcm files
+    # - if only glob_expr is provided:                 filter by glob_expr
+    # - if only reg_expr is provided:                  filter by reg_expr
+    # - if both glob_expr and reg_expr are provided:   glob_expr, then reg_expr
+    files = None
+    if glob_expr is None and reg_expr is None:
+        glob_expr = f"**/*{_DICOM_SUFFIX}"
+    if glob_expr:
+        files = in_dir.glob(glob_expr)
+    if reg_expr:
+        if files is None:
+            files = list(in_dir.rglob("*"))
+        pattern = re.compile(reg_expr)
+        files = ( f for f in files if pattern.match(str(f)))
+    files = sorted(f for f in files if f.is_file() and f.name not in _NO_FILES)
+
+    if len(files)==0:
+        _logger.error("No files found in directory: %s", in_dir)
+        _logger.error("Glob expression: %s", glob_expr)
+        _logger.error("Regular expression: %s", reg_expr)
+        return
+
     # Construct a dict that maps the series to the *first* DICOM file.
     # Assumption: DICOM series are located in distinct folders that
     # contain the files/DICOM instances.
-    files = list(sorted(in_dir.glob(glob_expr)))
     files_per_series = defaultdict(list)
     for f in files:
         series_id = f.parent.name
@@ -337,14 +373,21 @@ def create_dataset_summary(in_dir: PathLike,
     progress.start()
     data = []
     for i, (series_id, dicom_files) in enumerate(files_per_series.items()):
-        # Always use the first file to extract data from.
+        # Use the first valid file from which to extract data.
         # len(files)>0 is guaranteed.
-        file_path   = dicom_files[0]
+        dcm = None
+        for file_path in dicom_files:
+            dcm = _safe_read(file_path)
+            if dcm:
+                break
+        else:
+            msg = "Could not read any valid dicom information for folder: %s"
+            _logger.warning(msg, series_id)
+            continue
+
         series_dir  = file_path.parent
         assert(series_dir.name == series_id)
-
         sid         = series_id
-        dcm         = dicom.read_file(file_path)
         patient_id  = dcm.PatientID
         dt, dt_type = _extract_time(dcm, sid)
         modality    = _extract_key(dcm, sid, "Modality",          _NA,  True)
@@ -383,9 +426,12 @@ def create_dataset_summary(in_dir: PathLike,
         data.append(row)
         progress.update(i)
 
-    data = pd.DataFrame(data)
-    data = data.sort_values(["patientId", "datetime"]).reset_index(drop=True)
-    data["caseId"] = data.groupby("patientId").cumcount()+1
     progress.finish()
+
+    data = pd.DataFrame(data)
+    if not data.empty:
+        data = data.sort_values(["patientId", "datetime"])
+        data = data.reset_index(drop=True)
+        data["caseId"] = data.groupby("patientId").cumcount()+1
     _logger.info("Done!")
     return data
