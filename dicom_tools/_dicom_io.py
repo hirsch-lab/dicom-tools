@@ -12,6 +12,7 @@ from ._utils import (check_in_dir,
                      ensure_out_dir,
                      create_progress_bar)
 
+
 _NA = "N/A"
 _DICOM_SUFFIX = ".dcm"
 _NO_FILES = [ ".DS_Store", ]
@@ -20,11 +21,13 @@ _logger = logging.getLogger(_LOGGER_ID)
 
 # Run static type checking with the following command:
 # mypy _utils.py --ignore-missing-imports --allow-redefinition
-from typing import TypeVar, Optional, Tuple, List, Callable, Any
+from typing import TypeVar, Union, Optional, Tuple, List, Callable, Any
 # Protocol is part of the typing module in Python 3.8+,
 # but it remains available for older Python versions.
 from typing_extensions import Protocol
+# TypeVar vs. Union: https://stackoverflow.com/questions/58903906
 PathLike = TypeVar("PathLike", str, Path)
+#PathLike = Union[str, Path]
 OptionalPathList = Optional[List[Path]]
 OptionalFilter = Optional[Callable[[PathLike], bool]]
 class CallablePrinter(Protocol):
@@ -354,8 +357,8 @@ def create_dataset_summary(in_dir: PathLike,
     # contain the files/DICOM instances.
     files_per_series = defaultdict(list)
     for f in files:
-        series_id = f.parent.name
-        files_per_series[series_id].append(f)
+        parent = f.parent
+        files_per_series[parent].append(f)
     if n_series_max and n_series_max > 0:
         # Take first n items.
         new_dict = dict(islice(files_per_series.items(),
@@ -376,7 +379,7 @@ def create_dataset_summary(in_dir: PathLike,
                                    enabled=show_progress)
     progress.start()
     data = []
-    for i, (series_id, dicom_files) in enumerate(files_per_series.items()):
+    for i, (parent_dir, dicom_files) in enumerate(files_per_series.items()):
         # Use the first valid file from which to extract data.
         # len(files)>0 is guaranteed.
         dcm = None
@@ -386,12 +389,10 @@ def create_dataset_summary(in_dir: PathLike,
                 break
         else:
             msg = "Could not read any valid dicom information for folder: %s"
-            _logger.warning(msg, series_id)
+            _logger.warning(msg, parent_dir)
             continue
 
-        series_dir  = file_path.parent
-        assert(series_dir.name == series_id)
-        sid         = series_id
+        sid         = str(parent_dir)
         patient_id  = dcm.PatientID
         dt, dt_type = _extract_time(dcm, sid)
         modality    = _extract_key(dcm, sid, "Modality",          _NA,  True)
@@ -426,7 +427,7 @@ def create_dataset_summary(in_dir: PathLike,
                    seriesInstanceUID=series_uid,
                    sopInstanceUID=sop_uid,
                    seriesDescription=description,
-                   path=series_dir)
+                   path=parent_dir)
         data.append(row)
         progress.update(i)
 
