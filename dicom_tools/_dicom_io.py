@@ -263,7 +263,8 @@ def create_dataset_summary(in_dir: PathLike,
                            glob_expr: Optional[str]=None,
                            reg_expr: Optional[str]=None,
                            n_series_max: Optional[int]=None,
-                           show_progress: bool=True) -> pd.DataFrame:
+                           show_progress: bool=True,
+                           skip_localizers: bool=True) -> pd.DataFrame:
     """
     Recursively search for DICOM data in a folder and represent the data
     as a pandas DataFrame.
@@ -321,6 +322,71 @@ def create_dataset_summary(in_dir: PathLike,
                                 key, dataset_id)
             value = default
         return value
+
+
+    def _extract_dicom_info(dcm, parent_dir, skip_localizers):
+        if dcm is None:
+            return
+
+        sid         = str(parent_dir)
+        patient_id  = dcm.PatientID
+        dt, dt_type = _extract_time(dcm, sid)
+        modality    = _extract_key(dcm, sid, "Modality",          _NA,  True)
+        image_type  = _extract_key(dcm, sid, "ImageType",         _NA,  True)
+        sop_uid     = _extract_key(dcm, sid, "SOPInstanceUID",    _NA,  True)
+        study_uid   = _extract_key(dcm, sid, "StudyInstanceUID",  _NA,  True)
+        series_uid  = _extract_key(dcm, sid, "SeriesInstanceUID", _NA,  True)
+        cols        = _extract_key(dcm, sid, "Columns",           None, True)
+        rows        = _extract_key(dcm, sid, "Rows",              None, True)
+        size        = _NA if (cols==None or rows==None) else [cols, rows]
+        spacing     = _extract_key(dcm, sid, "PixelSpacing",      _NA,  False)
+        n_frames    = _extract_key(dcm, sid, "NumberOfFrames",    None, False)
+        description = _extract_key(dcm, sid, "SeriesDescription", _NA,  False)
+
+        # Extract image type
+        # https://dicom.innolitics.com/ciods/ct-image/general-image/00080008
+        pixel_data_tag = image_type[0]
+        patient_exam_tag = image_type[1]
+        info_object_def_tag = image_type[2] if len(image_type) >= 3 else _NA
+        implementation_tag = image_type[3:]
+
+        if n_frames is None:
+            n_frames = len(dicom_files)
+
+        if skip_localizers and modality.lower() in ("ct", "mr"):
+            if info_object_def_tag.lower() == "localizer":
+                # We happened to pick a localizer image, that is not
+                # really representative for the scan (it's single frame).
+                # http://www.otpedia.com/entryDetails.cfm?id=398
+                # Localizer images, also called scout images, are used in
+                # MR and CT studies to identify the relative anatomical
+                # position of a collection of cross-sectional images.
+                _logger.debug("Skipping localizer for %s", parent_dir)
+                return
+
+        # Clean dirty strings
+        description = description.replace('\"',"")
+        description = description.replace("\n","_")
+        description = description.replace(";","_")
+
+        # This forms the row of the resulting table
+        row = dict(patientId=patient_id,
+                   caseId=None,
+                   datetime=dt,
+                   datetimeType=dt_type,
+                   modality=modality,
+                   pixelTag=pixel_data_tag,
+                   examTag=patient_exam_tag,
+                   imageTags= image_type,
+                   size=size,
+                   spacing=spacing,
+                   nFrames=n_frames,
+                   studyInstanceUID=study_uid,
+                   seriesInstanceUID=series_uid,
+                   sopInstanceUID=sop_uid,
+                   seriesDescription=description,
+                   path=parent_dir)
+        return row
 
 
     if not in_dir.is_dir():
@@ -382,52 +448,20 @@ def create_dataset_summary(in_dir: PathLike,
     for i, (parent_dir, dicom_files) in enumerate(files_per_series.items()):
         # Use the first valid file from which to extract data.
         # len(files)>0 is guaranteed.
-        dcm = None
         for file_path in dicom_files:
             dcm = _safe_read(file_path)
-            if dcm:
-                break
+            if dcm is None:
+                continue  # Inner loop
+            row = _extract_dicom_info(dcm=dcm, parent_dir=parent_dir,
+                                      skip_localizers=skip_localizers)
+            if row is not None:
+                # We have found a valid "first" DICOM of a series.
+                break  # Outer loop
         else:
             msg = "Could not read any valid dicom information for folder: %s"
             _logger.warning(msg, parent_dir)
-            continue
+            continue        # Outer loop
 
-        sid         = str(parent_dir)
-        patient_id  = dcm.PatientID
-        dt, dt_type = _extract_time(dcm, sid)
-        modality    = _extract_key(dcm, sid, "Modality",          _NA,  True)
-        sop_uid     = _extract_key(dcm, sid, "SOPInstanceUID",    _NA,  True)
-        study_uid   = _extract_key(dcm, sid, "StudyInstanceUID",  _NA,  True)
-        series_uid  = _extract_key(dcm, sid, "SeriesInstanceUID", _NA,  True)
-        cols        = _extract_key(dcm, sid, "Columns",           None, True)
-        rows        = _extract_key(dcm, sid, "Rows",              None, True)
-        size        = _NA if (cols==None or rows==None) else [cols, rows]
-        spacing     = _extract_key(dcm, sid, "PixelSpacing",      _NA,  False)
-        n_frames    = _extract_key(dcm, sid, "NumberOfFrames",    None, False)
-        description = _extract_key(dcm, sid, "SeriesDescription", _NA,  False)
-
-        if n_frames is None:
-            n_frames = len(dicom_files)
-
-        # Clean dirty strings
-        description = description.replace('\"',"")
-        description = description.replace("\n","_")
-        description = description.replace(";","_")
-
-        # This forms the row of the resulting table
-        row = dict(patientId=patient_id,
-                   caseId=None,
-                   datetime=dt,
-                   datetimeType=dt_type,
-                   modality=modality,
-                   size=size,
-                   spacing=spacing,
-                   nFrames=n_frames,
-                   studyInstanceUID=study_uid,
-                   seriesInstanceUID=series_uid,
-                   sopInstanceUID=sop_uid,
-                   seriesDescription=description,
-                   path=parent_dir)
         data.append(row)
         progress.update(i)
 
