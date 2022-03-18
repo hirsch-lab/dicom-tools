@@ -265,7 +265,9 @@ def create_dataset_summary(in_dir: PathLike,
     Recursively search for DICOM data in a folder and represent the data
     as a pandas DataFrame.
     """
-    def _safe_read(file_path):
+    in_dir = Path(in_dir)
+
+    def _safe_read(file_path: Path) -> Optional[dicom.Dataset]:
         dcm = None
         try:
             dcm = dicom.dcmread(file_path)
@@ -317,7 +319,7 @@ def create_dataset_summary(in_dir: PathLike,
             value = default
         return value
 
-    in_dir = Path(in_dir)
+
     if not in_dir.is_dir():
         _logger.error("Input folder does not exist: %s", in_dir)
         exit(-1)
@@ -327,17 +329,19 @@ def create_dataset_summary(in_dir: PathLike,
     # - if only glob_expr is provided:                 filter by glob_expr
     # - if only reg_expr is provided:                  filter by reg_expr
     # - if both glob_expr and reg_expr are provided:   glob_expr, then reg_expr
-    files = None
+    files_iter = None
     if glob_expr is None and reg_expr is None:
         glob_expr = f"**/*{_DICOM_SUFFIX}"
     if glob_expr:
-        files = in_dir.glob(glob_expr)
+        files_iter = in_dir.glob(glob_expr)
+    else:
+        files_iter = in_dir.rglob("*")
     if reg_expr:
-        if files is None:
-            files = list(in_dir.rglob("*"))
         pattern = re.compile(reg_expr)
-        files = ( f for f in files if pattern.match(str(f)))
-    files = sorted(f for f in files if f.is_file() and f.name not in _NO_FILES)
+        files_iter = (f for f in files_iter if pattern.match(str(f)))
+    files: List[Path] = sorted(f for f in files_iter
+                               if (f.is_file() and
+                                   f.name not in _NO_FILES))
 
     if len(files)==0:
         _logger.error("No files found in directory: %s", in_dir)
