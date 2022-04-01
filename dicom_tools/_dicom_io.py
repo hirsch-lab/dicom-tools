@@ -17,6 +17,7 @@ _NA = "N/A"
 _DICOM_SUFFIX = ".dcm"
 _NO_FILES = [ ".DS_Store", ]
 _LOGGER_ID = "dicom"
+_DEFAULT_DATE = "20000101"
 _logger = logging.getLogger(_LOGGER_ID)
 
 # Run static type checking with the following command:
@@ -279,36 +280,32 @@ def create_dataset_summary(in_dir: PathLike,
             _logger.info("Ignoring file %s", file_path)
         return dcm
 
-    def _canonical_datetime(date: str, time:str) -> datetime:
-        if len(time.split(".")) > 1:
+    def _canonical_datetime(date: str,
+                            time: Optional[str]=None) -> Optional[datetime]:
+        # If time contains a ".", it has a sub-second resolution.
+        if not date and not time:
+            return None
+        with_subsecs = time is not None and "." in time
+        if not date:
+            date = _DEFAULT_DATE
+        if not time:
+            dt = datetime.strptime(date,"%Y%m%d")
+        elif not with_subsecs:
+            dt = datetime.strptime(date+time,"%Y%m%d%H%M%S")
+        elif with_subsecs:
             dt = datetime.strptime(date+time,"%Y%m%d%H%M%S.%f")
         else:
-            dt = datetime.strptime(date+time,"%Y%m%d%H%M%S")
+            assert False
         return dt
 
     def _extract_time(dataset: dicom.Dataset,
-                      dataset_id: str) -> Tuple[datetime, str]:
-        if "AcquisitionDate" in dataset and "AcquisitionTime" in dataset:
-            dt = _canonical_datetime(date=dataset.AcquisitionDate,
-                                     time=dataset.AcquisitionTime)
-            dt_type = "AcquisitionDateTime"
-        elif "StudyDate" in dataset and "StudyTime" in dataset:
-            dt = _canonical_datetime(date=dataset.StudyDate,
-                                     time=dataset.StudyTime)
-            dt_type = "StudyDateTime"
-        elif "InstanceCreationDate" in dataset and "InstanceCreationTime" in dataset:
-            dt = _canonical_datetime(date=dataset.InstanceCreationDate,
-                                     time=dataset.InstanceCreationTime)
-            dt_type = "InstanceCreationDateTime"
-        elif "SeriesDate" in dataset and "SeriesTime" in dataset:
-            dt = _canonical_datetime(date=dataset.SeriesDate,
-                                     time=dataset.SeriesTime)
-            dt_type = "SeriesDateTime"
-        else:
-            _logger.warning("No date tag for dataset: %s", dataset_id)
-            dt = datetime.utcfromtimestamp(0)
-            dt_type = _NA
-        return dt, dt_type
+                      dataset_id: str,
+                      which: str="Acquisition") -> Optional[datetime]:
+        which = which.capitalize()
+        date = dataset.get(which+"Date", _DEFAULT_DATE)
+        time = dataset.get(which+"Time")
+        dt = _canonical_datetime(date=date, time=time)
+        return dt
 
     def _extract_key(dataset: dicom.Dataset,
                      dataset_id: str,
@@ -330,7 +327,9 @@ def create_dataset_summary(in_dir: PathLike,
 
         sid         = str(parent_dir)
         patient_id  = dcm.PatientID
-        dt, dt_type = _extract_time(dcm, sid)
+        dt_study    = _extract_time(dcm, sid, which="Study")
+        dt_series   = _extract_time(dcm, sid, which="Series")
+        dt_acq      = _extract_time(dcm, sid, which="Acquisition")
         modality    = _extract_key(dcm, sid, "Modality",          _NA,  True)
         image_type  = _extract_key(dcm, sid, "ImageType",         _NA,  True)
         sop_uid     = _extract_key(dcm, sid, "SOPInstanceUID",    _NA,  True)
@@ -372,8 +371,9 @@ def create_dataset_summary(in_dir: PathLike,
         # This forms the row of the resulting table
         row = dict(patientId=patient_id,
                    caseId=None,
-                   datetime=dt,
-                   datetimeType=dt_type,
+                   seriesDateTime=dt_series,
+                   studyDateTime=dt_study,
+                   acquisitionDateTime=dt_acq,
                    modality=modality,
                    pixelTag=pixel_data_tag,
                    examTag=patient_exam_tag,
@@ -469,7 +469,8 @@ def create_dataset_summary(in_dir: PathLike,
 
     data = pd.DataFrame(data)
     if not data.empty:
-        data = data.sort_values(["patientId", "datetime"])
+        sort_list = ["patientId", "seriesDateTime"]
+        data = data.sort_values(sort_list)
         data = data.reset_index(drop=True)
         data["caseId"] = data.groupby("patientId").cumcount()+1
     _logger.info("Done!")
