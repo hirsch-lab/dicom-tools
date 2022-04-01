@@ -339,8 +339,11 @@ def create_dataset_summary(in_dir: PathLike,
         rows        = _extract_key(dcm, sid, "Rows",              None, True)
         size        = _NA if (cols==None or rows==None) else [cols, rows]
         spacing     = _extract_key(dcm, sid, "PixelSpacing",      _NA,  False)
+        thickness   = _extract_key(dcm, sid, "SliceThickness",    _NA,  False)
         n_frames    = _extract_key(dcm, sid, "NumberOfFrames",    None, False)
-        description = _extract_key(dcm, sid, "SeriesDescription", _NA,  False)
+        series_desc = _extract_key(dcm, sid, "SeriesDescription", _NA,  False)
+        study_desc  = _extract_key(dcm, sid, "StudyDescription",  _NA,  False)
+        kvp         = _extract_key(dcm, sid, "KVP", None, False)  # CT: Peak kilo voltage
 
         # Extract image type
         # https://dicom.innolitics.com/ciods/ct-image/general-image/00080008
@@ -364,9 +367,12 @@ def create_dataset_summary(in_dir: PathLike,
                 return
 
         # Clean dirty strings
-        description = description.replace('\"',"")
-        description = description.replace("\n","_")
-        description = description.replace(";","_")
+        series_desc = series_desc.replace('\"',"")
+        series_desc = series_desc.replace("\n","_")
+        series_desc = series_desc.replace(";","_")
+        study_desc = study_desc.replace('\"',"")
+        study_desc = study_desc.replace("\n","_")
+        study_desc = study_desc.replace(";","_")
 
         # This forms the row of the resulting table
         row = dict(patientId=patient_id,
@@ -375,16 +381,19 @@ def create_dataset_summary(in_dir: PathLike,
                    studyDateTime=dt_study,
                    acquisitionDateTime=dt_acq,
                    modality=modality,
+                   kvp=kvp,
+                   size=size,
+                   spacing=spacing,
+                   thickness=thickness,
+                   nFrames=n_frames,
+                   seriesDescription=series_desc,
+                   studyDescription=study_desc,
                    pixelTag=pixel_data_tag,
                    examTag=patient_exam_tag,
                    imageTags= image_type,
-                   size=size,
-                   spacing=spacing,
-                   nFrames=n_frames,
                    studyInstanceUID=study_uid,
                    seriesInstanceUID=series_uid,
                    sopInstanceUID=sop_uid,
-                   seriesDescription=description,
                    path=parent_dir)
         return row
 
