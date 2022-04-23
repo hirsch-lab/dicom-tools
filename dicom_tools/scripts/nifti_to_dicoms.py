@@ -1,51 +1,18 @@
-#!/usr/bin/env python
-import ast
 import logging
 import argparse
 import pydicom as dicom
-from pathlib import Path
 
-from dicom_tools._utils import (setup_logging,
-                                ensure_out_dir)
-from dicom_tools._conversion import stack2dicom
+from dicom_tools._utils import setup_logging
+from dicom_tools._conversion import nifti2dicom
 from dicom_tools._dicom_dump import dump_to_yaml, from_yaml
+from stack_to_dicom import _dicom_attributes, _create_template_attribute_file
 
-
-LOGGER_ID = "dicom"
+LOGGER_ID = "back2dicom"
 _logger = logging.getLogger(LOGGER_ID)
 
-def _dicom_attributes(ds, attributes):
-    for key, value in attributes:
-        try:
-            tag = ast.literal_eval(key)
-        except ValueError:
-            tag = key
-        ds.add_new(tag, dicom.datadict.dictionary_VR(tag), value)
-
-
-def _create_template_attribute_file(path, force=False):
-    path = Path(path)
-    if path.is_file() and not force:
-        _logger.error("Attribute file already exists: %s", path)
-        exit(1)
-
-    ensure_out_dir(path.parent)
-    ds = dicom.dataset.Dataset()
-    ds.file_meta = dicom.dataset.FileMetaDataset()
-    # File meta elements
-    ds.file_meta.TransferSyntaxUID = "Explicit VR Little Endian"
-
-    # Standard elements
-    ds.Modality = "MR"
-
-    # Dump file
-    ret = dump_to_yaml(path=path, data=ds)
-    if ret:
-        _logger.info("File written: %s", path)
-
-
 def _run(args):
-    setup_logging(verbosity=args.verbosity+1)
+    setup_logging(verbosity=args.verbosity + 1)
+
     if args.create_attribute_file:
         _create_template_attribute_file(path=args.create_attribute_file,
                                         force=args.force)
@@ -56,24 +23,20 @@ def _run(args):
     else:
         ds = dicom.dataset.Dataset()
         ds.file_meta = dicom.dataset.FileMetaDataset()
-
     _dicom_attributes(ds, args.attribute)
     _dicom_attributes(ds.file_meta, args.meta_attribute)
 
-    stack2dicom(in_dir=args.in_dir,
+    nifti2dicom(in_dir=args.in_dir,
                 out_dir=args.out_dir,
                 pattern=args.pattern,
                 regex=args.regex,
                 n_files=None,
-                pix_depth=args.depth,
                 attributes=ds)
 
-
 def _parse_args():
-    description = ("Convert a stack of images into a multi-file DICOM.\n"
-                   "Any image format supported by Pillow can be.\n"
-                   "processed. Potential multi-frame images are split\n"
-                   "into singles and processed normally.\n\n"
+    description = ("Converting Nifti file back to DICOM images.\n"
+                   "Applies for compressed and non-compressed files.\n"
+                   "Formats like hdr/img are not yet supported.\n\n"
                    "It is possible to augment the DICOM files by additional\n"
                    "data elements. For instance, one can use either\n"
                    "    --attribute KEY VALUE\n"
@@ -82,8 +45,9 @@ def _parse_args():
                    "conveniently, one can load those attributes from a\n"
                    "specification file, see\n"
                    "    --attribute-file PATH\n"
-                   "    --create-attribute-file PATH")
-    formatter = argparse.RawTextHelpFormatter
+                   "    --create-attribute-file PATH"
+                   )
+    formatter = argparse.RawDescriptionHelpFormatter
     parser = argparse.ArgumentParser(description=description,
                                      add_help=False,
                                      formatter_class=formatter)
@@ -101,18 +65,16 @@ def _parse_args():
                        help=("A folder containing the images."))
     group.add_argument("-o", "--out-dir", default="./out", type=str,
                        help=("Output directory. Default: ./out"))
-    group.add_argument("-p", "--pattern", type=str, default="*.*",
+    group.add_argument("-p", "--pattern", type=str, default="*.nii.gz",
                        help=("Glob-pattern to filter the files in the\n"
-                             "input directory. Default: '*.*'"))
+                             "input directory. Default: '*.nii.gz'\n"
+                             "uncompressed nifti: '*.nii'"))
     group.add_argument("--regex", type=str, default=None,
                        help=("Regular expression pattern to filter the\n"
                              "files in the input directory. Overrides\n"
                              "the glob expression --pattern."))
     group.add_argument("-f", "--force", action="store_true",
                        help="Force writing of output files.")
-    group.add_argument("-d", "--depth", type=str, default=None,
-                       help=("Pixel depth for input image \n"
-                             "normally dealt by PIL and numpy. Default: None"))
 
     # DICOM
     group = parser.add_argument_group("DICOM")
@@ -143,14 +105,13 @@ def _parse_args():
                              "of the attribute, while the second one\n"
                              "contains its value. Example:\n"
                              "   --meta-attribute '(0002,0010)' ..."))
+
     group.set_defaults(func=_run)
     return parser.parse_args()
-
 
 def main():
     args = _parse_args()
     args.func(args)
-
 
 if __name__ == "__main__":
     main()

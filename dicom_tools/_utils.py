@@ -1,7 +1,11 @@
 import re
 import logging
+import pydicom
+import dicom2nifti
 from pathlib import Path
 import progressbar as pg # Package: progressbar2
+import os
+from PIL import Image, ImageSequence
 
 LOGGER_ID = "dicom"
 _logger = logging.getLogger(LOGGER_ID)
@@ -41,6 +45,22 @@ def ensure_out_dir(out_dir: PathLike, raise_error: bool=False) -> bool:
     return out_dir.is_dir()
 
 
+def resolve_multiframe(in_dir: PathLike) -> None:
+    Path(in_dir)
+    for i in os.listdir(in_dir):
+        if i == ".DS_Store":
+            os.remove(os.path.join(in_dir, i))
+        elif i.lower().endswith(('.png', '.jpg', '.jpeg', '.tif', '.tiff')):
+            img = Image.open(os.path.join(in_dir, i))
+            if getattr(img, "n_frames", 1) > 1:
+                for idx, page in enumerate(ImageSequence.Iterator(img)):
+                    page.save(os.path.join(in_dir, i.rsplit('.', 1)[0] + '_slice%d.tif' % idx)) # save to corresponding original format (currently only tiff)
+                try:
+                    Path(os.path.join(in_dir, i)).unlink() # remove multi-frame image
+                except OSError as e:
+                    print('Error: %s : %s' % (i, e.strerror))
+
+
 def search_files(in_dir: PathLike,
                  pattern: Optional[str]=None,
                  regex: Optional[str]=None,
@@ -58,6 +78,8 @@ def search_files(in_dir: PathLike,
         _logger.error("No files found: %s", in_dir)
         _logger.error("Pattern: %s", pattern)
     return files
+
+
 
 
 def create_progress_bar(size: Optional[int]=None,

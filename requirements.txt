@@ -6,7 +6,9 @@ progressbar2            # To indicate progress
 mypy>=0.700             # For static code analysis
 pyyaml>=5               # For reading/parsing YAML files
 
+opencv-python
 coverage==5.5
 pytest==6.2.1
 pytest-cov==2.11.1
+pynetdicom==2.0.1
 # coveralls==2.2.0
