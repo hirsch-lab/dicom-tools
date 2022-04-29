@@ -65,7 +65,7 @@ def _run(args):
                 pattern=args.pattern,
                 regex=args.regex,
                 n_files=None,
-                pix_depth=args.depth,
+                dtype=args.dtype,
                 attributes=ds)
 
 
@@ -110,9 +110,9 @@ def _parse_args():
                              "the glob expression --pattern."))
     group.add_argument("-f", "--force", action="store_true",
                        help="Force writing of output files.")
-    group.add_argument("-d", "--depth", type=str, default=None,
-                       help=("Pixel depth for input image \n"
-                             "normally dealt by PIL and numpy. Default: None"))
+    group.add_argument("-d", "--dtype", type=str, default=None,
+                       help=("Enforce a dtype, e.g. 'uint8'. Warning: Does \n"
+                             "not scale the pixel space! Default: None"))
 
     # DICOM
     group = parser.add_argument_group("DICOM")
