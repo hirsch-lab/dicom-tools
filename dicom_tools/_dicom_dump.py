@@ -18,6 +18,7 @@ ReaderCallable = Callable[[TextIO], DatasetDict]
 WriterCallable = Callable[[PathLike, TextIO], None]
 
 def _tag_to_str(tag: dicom.tag.TagType) -> str:
+    tag = dicom.tag.Tag(tag)
     return "0x%04x%04x" % (tag.group, tag.elem)
 
 

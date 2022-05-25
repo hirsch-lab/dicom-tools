@@ -1,3 +1,4 @@
+import re
 import errno
 import shutil
 import logging
@@ -11,18 +12,23 @@ from ._utils import (check_in_dir,
                      ensure_out_dir,
                      create_progress_bar)
 
+
 _NA = "N/A"
 _DICOM_SUFFIX = ".dcm"
+_NO_FILES = [ ".DS_Store", ]
 _LOGGER_ID = "dicom"
+_DEFAULT_DATE = "20000101"
 _logger = logging.getLogger(_LOGGER_ID)
 
 # Run static type checking with the following command:
 # mypy _utils.py --ignore-missing-imports --allow-redefinition
-from typing import TypeVar, Optional, Tuple, List, Callable, Any
+from typing import TypeVar, Union, Optional, Tuple, List, Callable, Any
 # Protocol is part of the typing module in Python 3.8+,
 # but it remains available for older Python versions.
 from typing_extensions import Protocol
+# TypeVar vs. Union: https://stackoverflow.com/questions/58903906
 PathLike = TypeVar("PathLike", str, Path)
+#PathLike = Union[str, Path]
 OptionalPathList = Optional[List[Path]]
 OptionalFilter = Optional[Callable[[PathLike], bool]]
 class CallablePrinter(Protocol):
@@ -172,7 +178,7 @@ def copy_headers(in_dir: PathLike,
         folders_created.add(out_parent)
         if first_file_only and out_parent==previous_parent:
             continue
-        dataset = dicom.dcmread(filepath)
+        dataset : dicom.Dataset = dicom.dcmread(filepath)
         # This fixes a problem for corrupted data sets.
         pixel_data_tag = dicom.tag.Tag("PixelData")
         if not pixel_data_tag in dataset and skip_empty:
@@ -218,7 +224,7 @@ def print_info(path: PathLike,
         _logger.error("Expecting a DICOM file as input: %s", path)
         return
 
-    dataset = dicom.dcmread(path)
+    dataset : dicom.Dataset = dicom.dcmread(path)
 
     if detailed:
         printer()
@@ -255,45 +261,51 @@ def print_info(path: PathLike,
 
 
 def create_dataset_summary(in_dir: PathLike,
-                           glob_expr: str=f"**/*{_DICOM_SUFFIX}",
+                           glob_expr: Optional[str]=None,
+                           reg_expr: Optional[str]=None,
                            n_series_max: Optional[int]=None,
-                           show_progress: bool=True) -> pd.DataFrame:
+                           show_progress: bool=True,
+                           skip_localizers: bool=True) -> pd.DataFrame:
     """
     Recursively search for DICOM data in a folder and represent the data
     as a pandas DataFrame.
     """
     in_dir = Path(in_dir)
 
-    def _canonical_datetime(date: str, time:str) -> datetime:
-        if len(time.split(".")) > 1:
+    def _safe_read(file_path: Path) -> Optional[dicom.Dataset]:
+        dcm = None
+        try:
+            dcm = dicom.dcmread(file_path)
+        except dicom.errors.InvalidDicomError:
+            _logger.info("Ignoring file %s", file_path)
+        return dcm
+
+    def _canonical_datetime(date: str,
+                            time: Optional[str]=None) -> Optional[datetime]:
+        # If time contains a ".", it has a sub-second resolution.
+        if not date and not time:
+            return None
+        with_subsecs = time is not None and "." in time
+        if not date:
+            date = _DEFAULT_DATE
+        if not time:
+            dt = datetime.strptime(date,"%Y%m%d")
+        elif not with_subsecs:
+            dt = datetime.strptime(date+time,"%Y%m%d%H%M%S")
+        elif with_subsecs:
             dt = datetime.strptime(date+time,"%Y%m%d%H%M%S.%f")
         else:
-            dt = datetime.strptime(date+time,"%Y%m%d%H%M%S")
+            assert False
         return dt
 
     def _extract_time(dataset: dicom.Dataset,
-                      dataset_id: str) -> Tuple[datetime, str]:
-        if "AcquisitionDate" in dataset and "AcquisitionTime" in dataset:
-            dt = _canonical_datetime(date=dataset.AcquisitionDate,
-                                     time=dataset.AcquisitionTime)
-            dt_type = "AcquisitionDateTime"
-        elif "StudyDate" in dataset and "StudyTime" in dataset:
-            dt = _canonical_datetime(date=dataset.StudyDate,
-                                     time=dataset.StudyTime)
-            dt_type = "StudyDateTime"
-        elif "InstanceCreationDate" in dataset and "InstanceCreationTime" in dataset:
-            dt = _canonical_datetime(date=dataset.InstanceCreationDate,
-                                     time=dataset.InstanceCreationTime)
-            dt_type = "InstanceCreationDateTime"
-        elif "SeriesDate" in dataset and "SeriesTime" in dataset:
-            dt = _canonical_datetime(date=dataset.SeriesDate,
-                                     time=dataset.SeriesTime)
-            dt_type = "SeriesDateTime"
-        else:
-            _logger.warning("No date tag for dataset: %s", dataset_id)
-            dt = datetime.utcfromtimestamp(0)
-            dt_type = _NA
-        return dt, dt_type
+                      dataset_id: str,
+                      which: str="Acquisition") -> Optional[datetime]:
+        which = which.capitalize()
+        date = dataset.get(which+"Date", _DEFAULT_DATE)
+        time = dataset.get(which+"Time")
+        dt = _canonical_datetime(date=date, time=time)
+        return dt
 
     def _extract_key(dataset: dicom.Dataset,
                      dataset_id: str,
@@ -308,14 +320,120 @@ def create_dataset_summary(in_dir: PathLike,
             value = default
         return value
 
+
+    def _extract_dicom_info(dcm, parent_dir, skip_localizers):
+        if dcm is None:
+            return
+
+        sid         = str(parent_dir)
+        patient_id  = dcm.PatientID
+        dt_study    = _extract_time(dcm, sid, which="Study")
+        dt_series   = _extract_time(dcm, sid, which="Series")
+        dt_acq      = _extract_time(dcm, sid, which="Acquisition")
+        modality    = _extract_key(dcm, sid, "Modality",          _NA,  True)
+        image_type  = _extract_key(dcm, sid, "ImageType",         _NA,  True)
+        sop_uid     = _extract_key(dcm, sid, "SOPInstanceUID",    _NA,  True)
+        study_uid   = _extract_key(dcm, sid, "StudyInstanceUID",  _NA,  True)
+        series_uid  = _extract_key(dcm, sid, "SeriesInstanceUID", _NA,  True)
+        cols        = _extract_key(dcm, sid, "Columns",           None, True)
+        rows        = _extract_key(dcm, sid, "Rows",              None, True)
+        size        = _NA if (cols==None or rows==None) else [cols, rows]
+        spacing     = _extract_key(dcm, sid, "PixelSpacing",      _NA,  False)
+        thickness   = _extract_key(dcm, sid, "SliceThickness",    _NA,  False)
+        n_frames    = _extract_key(dcm, sid, "NumberOfFrames",    None, False)
+        series_desc = _extract_key(dcm, sid, "SeriesDescription", _NA,  False)
+        study_desc  = _extract_key(dcm, sid, "StudyDescription",  _NA,  False)
+        kvp         = _extract_key(dcm, sid, "KVP", None, False)  # CT: Peak kilo voltage
+
+        # Extract image type
+        # https://dicom.innolitics.com/ciods/ct-image/general-image/00080008
+        pixel_data_tag = image_type[0]
+        patient_exam_tag = image_type[1]
+        info_object_def_tag = image_type[2] if len(image_type) >= 3 else _NA
+        implementation_tag = image_type[3:]
+
+        if n_frames is None:
+            n_frames = len(dicom_files)
+
+        if skip_localizers and modality.lower() in ("ct", "mr"):
+            if info_object_def_tag.lower() == "localizer":
+                # We happened to pick a localizer image, that is not
+                # really representative for the scan (it's single frame).
+                # http://www.otpedia.com/entryDetails.cfm?id=398
+                # Localizer images, also called scout images, are used in
+                # MR and CT studies to identify the relative anatomical
+                # position of a collection of cross-sectional images.
+                _logger.debug("Skipping localizer for %s", parent_dir)
+                return
+
+        # Clean dirty strings
+        series_desc = series_desc.replace('\"',"")
+        series_desc = series_desc.replace("\n","_")
+        series_desc = series_desc.replace(";","_")
+        study_desc = study_desc.replace('\"',"")
+        study_desc = study_desc.replace("\n","_")
+        study_desc = study_desc.replace(";","_")
+
+        # This forms the row of the resulting table
+        row = dict(patientId=patient_id,
+                   caseId=None,
+                   seriesDateTime=dt_series,
+                   studyDateTime=dt_study,
+                   acquisitionDateTime=dt_acq,
+                   modality=modality,
+                   kvp=kvp,
+                   size=size,
+                   spacing=spacing,
+                   thickness=thickness,
+                   nFrames=n_frames,
+                   seriesDescription=series_desc,
+                   studyDescription=study_desc,
+                   pixelTag=pixel_data_tag,
+                   examTag=patient_exam_tag,
+                   imageTags= image_type,
+                   studyInstanceUID=study_uid,
+                   seriesInstanceUID=series_uid,
+                   sopInstanceUID=sop_uid,
+                   path=parent_dir)
+        return row
+
+
+    if not in_dir.is_dir():
+        _logger.error("Input folder does not exist: %s", in_dir)
+        exit(-1)
+
+    # Choose files.
+    # - if neither glob_expr nor reg_expr is provided: search all .dcm files
+    # - if only glob_expr is provided:                 filter by glob_expr
+    # - if only reg_expr is provided:                  filter by reg_expr
+    # - if both glob_expr and reg_expr are provided:   glob_expr, then reg_expr
+    files_iter = None
+    if glob_expr is None and reg_expr is None:
+        glob_expr = f"**/*{_DICOM_SUFFIX}"
+    if glob_expr:
+        files_iter = in_dir.glob(glob_expr)
+    else:
+        files_iter = in_dir.rglob("*")
+    if reg_expr:
+        pattern = re.compile(reg_expr)
+        files_iter = (f for f in files_iter if pattern.match(str(f)))
+    files: List[Path] = sorted(f for f in files_iter
+                               if (f.is_file() and
+                                   f.name not in _NO_FILES))
+
+    if len(files)==0:
+        _logger.error("No files found in directory: %s", in_dir)
+        _logger.error("Glob expression: %s", glob_expr)
+        _logger.error("Regular expression: %s", reg_expr)
+        return
+
     # Construct a dict that maps the series to the *first* DICOM file.
     # Assumption: DICOM series are located in distinct folders that
     # contain the files/DICOM instances.
-    files = list(sorted(in_dir.glob(glob_expr)))
     files_per_series = defaultdict(list)
     for f in files:
-        series_id = f.parent.name
-        files_per_series[series_id].append(f)
+        parent = f.parent
+        files_per_series[parent].append(f)
     if n_series_max and n_series_max > 0:
         # Take first n items.
         new_dict = dict(islice(files_per_series.items(),
@@ -336,56 +454,33 @@ def create_dataset_summary(in_dir: PathLike,
                                    enabled=show_progress)
     progress.start()
     data = []
-    for i, (series_id, dicom_files) in enumerate(files_per_series.items()):
-        # Always use the first file to extract data from.
+    for i, (parent_dir, dicom_files) in enumerate(files_per_series.items()):
+        # Use the first valid file from which to extract data.
         # len(files)>0 is guaranteed.
-        file_path   = dicom_files[0]
-        series_dir  = file_path.parent
-        assert(series_dir.name == series_id)
+        for file_path in dicom_files:
+            dcm = _safe_read(file_path)
+            if dcm is None:
+                continue  # Inner loop
+            row = _extract_dicom_info(dcm=dcm, parent_dir=parent_dir,
+                                      skip_localizers=skip_localizers)
+            if row is not None:
+                # We have found a valid "first" DICOM of a series.
+                break  # Outer loop
+        else:
+            msg = "Could not read any valid dicom information for folder: %s"
+            _logger.warning(msg, parent_dir)
+            continue        # Outer loop
 
-        sid         = series_id
-        dcm         = dicom.dcmread(file_path)
-        patient_id  = dcm.PatientID
-        dt, dt_type = _extract_time(dcm, sid)
-        modality    = _extract_key(dcm, sid, "Modality",          _NA,  True)
-        sop_uid     = _extract_key(dcm, sid, "SOPInstanceUID",    _NA,  True)
-        study_uid   = _extract_key(dcm, sid, "StudyInstanceUID",  _NA,  True)
-        series_uid  = _extract_key(dcm, sid, "SeriesInstanceUID", _NA,  True)
-        cols        = _extract_key(dcm, sid, "Columns",           None, True)
-        rows        = _extract_key(dcm, sid, "Rows",              None, True)
-        size        = _NA if (cols==None or rows==None) else [cols, rows]
-        spacing     = _extract_key(dcm, sid, "PixelSpacing",      _NA,  False)
-        n_frames    = _extract_key(dcm, sid, "NumberOfFrames",    None, False)
-        description = _extract_key(dcm, sid, "SeriesDescription", _NA,  False)
-
-        if n_frames is None:
-            n_frames = len(dicom_files)
-
-        # Clean dirty strings
-        description = description.replace('\"',"")
-        description = description.replace("\n","_")
-        description = description.replace(";","_")
-
-        # This forms the row of the resulting table
-        row = dict(patientId=patient_id,
-                   caseId=None,
-                   datetime=dt,
-                   datetimeType=dt_type,
-                   modality=modality,
-                   size=size,
-                   spacing=spacing,
-                   nFrames=n_frames,
-                   studyInstanceUID=study_uid,
-                   seriesInstanceUID=series_uid,
-                   sopInstanceUID=sop_uid,
-                   seriesDescription=description,
-                   path=series_dir)
         data.append(row)
         progress.update(i)
 
-    data = pd.DataFrame(data)
-    data = data.sort_values(["patientId", "datetime"]).reset_index(drop=True)
-    data["caseId"] = data.groupby("patientId").cumcount()+1
     progress.finish()
+
+    data = pd.DataFrame(data)
+    if not data.empty:
+        sort_list = ["patientId", "seriesDateTime"]
+        data = data.sort_values(sort_list)
+        data = data.reset_index(drop=True)
+        data["caseId"] = data.groupby("patientId").cumcount()+1
     _logger.info("Done!")
     return data
