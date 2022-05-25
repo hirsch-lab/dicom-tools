@@ -8,3 +8,11 @@ filterwarnings = [
   # https://github.com/ipython/ipykernel/issues/469
   "ignore::DeprecationWarning:ipykernel",
 ]
+
+# mypy settings
+[tool.mypy]
+warn_return_any = true
+warn_unused_configs = true
+allow_redefinition = true
+ignore_missing_imports = true
+plugins = [ "numpy.typing.mypy_plugin" ]
