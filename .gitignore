@@ -5,14 +5,15 @@ __pycache__/
 *.so
 MANIFEST
 
-
 output/
 tmp/
-
-dicom_tools/tests_part2/
 
 # Output of coverage (via pytest-cov)
 .coverage
 
 # Output of tox
 .tox/
+
+
+# Resources for testing
+resources/

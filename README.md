@@ -33,10 +33,10 @@ python -m pip install "dist/dicom-tools*.tar.gz"
 This installs the below command-line tools. 
 
 ```bash
-dicom-copy-from-list -h
-dicom-copy-headers -h
-dicom-inventory -h
-dicom-print-info -h
+dicom-copy-from-list
+dicom-copy-headers
+dicom-inventory
+dicom-print-info
 ```
 
 Note: it is possible to run the command-line utilities without installing the package. 
