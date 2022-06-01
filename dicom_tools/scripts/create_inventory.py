@@ -6,6 +6,7 @@ from .._dicom_io import create_dataset_summary
 from .._utils import setup_logging, ensure_out_dir, LOGGER_ID
 
 _logger = logging.getLogger(LOGGER_ID)
+_out_path = "./dicom_summary.csv"
 
 
 def _run(args):
@@ -15,11 +16,10 @@ def _run(args):
                                   n_series_max=args.n_max,
                                   glob_expr=args.glob,
                                   reg_expr=args.regex)
-    out_dir = Path(args.out_dir)
-    if data is not None and ensure_out_dir(out_dir=out_dir):
-        outpath = out_dir / "dicom_summary.csv"
-        data.to_csv(outpath, index=False)
-        _logger.info("Wrote summary to: %s", outpath)
+    out_path = Path(args.out_path)
+    if data is not None and ensure_out_dir(out_dir=out_path.parent):
+        data.to_csv(out_path, index=False)
+        _logger.info("Wrote summary to: %s", out_path)
         if args.verbosity > 0:
             _logger.info("Summary table:")
             print(data[["patientId", "caseId", "modality",
@@ -36,8 +36,8 @@ def _parse_args():
     parser_group = parser.add_argument_group("Arguments")
     parser_group.add_argument("-i", "--in-dir", required=True, type=str,
                               help="Directory of a DICOM source. Required.")
-    parser_group.add_argument("-o", "--out-dir", default="./out", type=str,
-                              help="Output directory. Default: ./out")
+    parser_group.add_argument("-o", "--out-path", default=_out_path, type=str,
+                              help="Output directory. Default: " + _out_path)
     parser_group.add_argument("-v", "--verbosity", action="count", default=0,
                               help="Increase verbosity")
     parser_group.add_argument("-g", "--glob", type=str, default=None,
