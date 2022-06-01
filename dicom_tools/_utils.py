@@ -63,6 +63,7 @@ def search_files(in_dir: PathLike,
 def create_progress_bar(size: Optional[int]=None,
                         label: str="Processing...",
                         threaded: bool=False,
+                        width: int=100,
                         enabled: bool=True) -> pg.ProgressBar:
     widgets = []
     if label:
@@ -106,6 +107,7 @@ def create_progress_bar(size: Optional[int]=None,
 
     progress = ProgressBarType(max_value=size,
                                widgets=widgets,
+                               term_width=width,
                                poll_interval=0.02)
     return progress
 
