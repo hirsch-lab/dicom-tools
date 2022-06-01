@@ -13,3 +13,7 @@ tmp/
 
 # Output of tox
 .tox/
+
+
+# Resources for testing
+resources/

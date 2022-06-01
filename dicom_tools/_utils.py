@@ -1,6 +1,7 @@
+import re
 import logging
 from pathlib import Path
-import progressbar as pg # Package: progressbar2
+import progressbar as pg  # Package: progressbar2
 
 LOGGER_ID = "dicom"
 _logger = logging.getLogger(LOGGER_ID)
@@ -38,6 +39,25 @@ def ensure_out_dir(out_dir: PathLike, raise_error: bool=False) -> bool:
             if raise_error:
                 raise  # pragma: no cover
     return out_dir.is_dir()
+
+
+def search_files(in_dir: PathLike,
+                 pattern: Optional[str]=None,
+                 regex: Optional[str]=None,
+                 n_files: Optional[int]=None) -> List[Path]:
+    if pattern is None:
+        pattern = "*.*"
+    in_dir = Path(in_dir)
+    files = sorted(list(in_dir.glob(pattern)))
+    if regex:
+        code = re.compile(regex)
+        files = [f for f in files if code.match(str(f))]
+    if n_files is not None and n_files > 0:
+        files = files[:n_files]
+    if len(files) == 0:
+        _logger.error("No files found: %s", in_dir)
+        _logger.error("Pattern: %s", pattern)
+    return files
 
 
 def create_progress_bar(size: Optional[int]=None,
