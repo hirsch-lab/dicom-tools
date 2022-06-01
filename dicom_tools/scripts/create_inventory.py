@@ -37,7 +37,7 @@ def _parse_args():
     parser_group.add_argument("-i", "--in-dir", required=True, type=str,
                               help="Directory of a DICOM source. Required.")
     parser_group.add_argument("-o", "--out-path", default=_out_path, type=str,
-                              help="Output directory. Default: " + _out_path)
+                              help="Path to output file. Default: " + _out_path)
     parser_group.add_argument("-v", "--verbosity", action="count", default=0,
                               help="Increase verbosity")
     parser_group.add_argument("-g", "--glob", type=str, default=None,
