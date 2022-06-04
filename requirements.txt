@@ -7,7 +7,7 @@ mypy>=0.700             # For static code analysis
 pyyaml>=5               # For reading/parsing YAML files
 
 dicom2nifti>=2.2        # For conversion DICOM -> NIfTI
-PIL>=8                  # For image handling and conversions
+PIL                     # For image handling and conversions
 
 opencv-python
 coverage==5.5
