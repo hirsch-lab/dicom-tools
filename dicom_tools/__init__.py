@@ -5,7 +5,8 @@ from ._dicom_io import (copy_from_file,
                         copy_from_list,
                         copy_headers,
                         print_info,
-                        #stack2dicom,
-                        #nifti2dicom,
-                        #dicom2nifti,
                         )
+from ._conversion import (stack2dicom,
+                          nifti2dicom,
+                          dicom2nifti,
+                          )
