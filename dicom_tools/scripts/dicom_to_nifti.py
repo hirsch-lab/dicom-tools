@@ -5,7 +5,7 @@ import os
 from pydicom import dcmread
 from pathlib import Path
 from dicom_tools._utils import setup_logging
-from dicom_tools._conversion import dicom_2_nifti
+from dicom_tools._conversion import dicom2nifti
 from dicom_tools._dicom_dump import dump_to_yaml
 
 LOGGER_ID = "nifti"
@@ -27,10 +27,10 @@ def _run(args):
                 _logger.error("The file {} could not be read by pydicom".format(f))
         exit(1)
 
-    dicom_2_nifti(in_dir=args.in_dir,
-                  out_dir=args.out_dir,
-                  comp=args.compression,
-                  reor=args.reorient)
+    dicom2nifti(in_dir=args.in_dir,
+                out_dir=args.out_dir,
+                comp=args.compression,
+                reor=args.reorient)
 
 
 def _parse_args():
