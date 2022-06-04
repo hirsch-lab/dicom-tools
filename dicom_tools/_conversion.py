@@ -1,5 +1,5 @@
 import logging
-import dicom2nifti
+import dicom2nifti as dcm2nii
 import nibabel as nib
 import numpy as np
 import pydicom as dicom
@@ -8,6 +8,7 @@ import PIL as pil
 
 from pathlib import Path
 from ._utils import (search_files, create_progress_bar, ensure_out_dir)
+from ._dicom_io import move_file_or_folder
 
 _LOGGER_ID = "dicom"
 _logger = logging.getLogger(_LOGGER_ID)
@@ -227,20 +228,27 @@ def stack2dicom(in_dir: PathLike,
     progress.finish()
 
 
-def dicom_2_nifti(in_dir: PathLike,
-                  out_dir: PathLike,
-                  comp: Optional[bool]=True,
-                  reor: Optional[bool]=False) -> None:
+def dicom2nifti(in_dir: PathLike,
+                out_dir: PathLike,
+                comp: Optional[bool]=True,
+                reor: Optional[bool]=False) -> None:
 
     in_dir = Path(in_dir)
     out_dir = Path(out_dir)
     if not ensure_out_dir(out_dir):
         return None
-    try:
-        dicom2nifti.convert_directory(in_dir, out_dir, compression=comp, reorient=reor)
-    except:
-        _logger.error("Conversion to Nifti failed DICOM integrity compromised.\n"
-                      "Check the --help information of the dicoms_to_nifit function.\n\n")
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        dcm2nii.convert_directory(in_dir, tmp_dir,
+                                  compression=comp,
+                                  reorient=reor)
+        files = list(Path(tmp_dir).glob("*.nii*"))
+        if len(files)==0:
+            _logger.error("Conversion to NIfTI failed.")
+            return None
+        assert len(files) == 1
+        ret_path = Path(files[0])
+        out_path = out_dir / (in_dir.name + "".join(ret_path.suffixes))
+        move_file_or_folder(src=ret_path, dst=out_path)
 
 
 def nifti2dicom(in_dir: PathLike,
@@ -260,7 +268,7 @@ def nifti2dicom(in_dir: PathLike,
     if not ensure_out_dir(out_dir):
         return None
     progress = create_progress_bar(size=len(paths),
-                                   label="# Nifi files",
+                                   label="# NIfTI files",
                                    enabled=show_progress)
     progress.start()
     for i, path in enumerate(paths):

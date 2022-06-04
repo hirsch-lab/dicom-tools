@@ -36,6 +36,26 @@ class CallablePrinter(Protocol):
 OptionalPrinter = Optional[CallablePrinter]
 
 
+def move_file_or_folder(src: PathLike,
+                        dst: PathLike) -> bool:
+    """
+    Returns:
+        True:       If file/folder is moved properly.
+        False:      If src file/folder does not exist.
+        False:      If file/folder could not be moved.
+    """
+    src = Path(src)
+    dst = Path(dst)
+    if not src or not src.exists():
+        return False
+    else:
+        ensure_out_dir(dst.parent)
+        shutil.move(src=str(src), dst=str(dst))
+
+    return not dst.exists() and not src.exists()
+
+
+
 def copy_from_file(in_dir: PathLike,
                    out_dir: PathLike,
                    list_file: PathLike,

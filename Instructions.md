@@ -23,7 +23,7 @@ python dicom_tools/scripts/stack_to_dicom.py -i /path/to/images --attribute-file
 ```
 
 
-## dicom_2_nifti
+## dicom2nifti
 Conversion of a folder containing multiple dicom files representing a 3D image.
 If random files are present in the folder the conversion fails. The function is
 also able to save header information from existing dicom files.
