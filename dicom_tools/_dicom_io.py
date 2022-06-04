@@ -115,6 +115,8 @@ def copy_from_list(in_dir: PathLike,
 
     entries_copied = []
     for i, filename in enumerate(to_copy):
+        if pd.isna(filename):
+            continue
         src = in_dir / filename
         if flat_copy:
             dst = out_dir / Path(filename).name
