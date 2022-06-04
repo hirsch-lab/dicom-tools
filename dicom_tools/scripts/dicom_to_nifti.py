@@ -13,6 +13,8 @@ _logger = logging.getLogger(LOGGER_ID)
 
 def _run(args):
     setup_logging(verbosity=args.verbosity + 1)
+    dcm2nii_logger = logging.getLogger("dicom2nifti")
+    dcm2nii_logger.setLevel(logging.ERROR)
     if args.create_attribute_file:
         files = sorted(os.listdir(Path(args.in_dir)))
         for f in files:
