@@ -7,6 +7,7 @@ mypy>=0.700             # For static code analysis
 pyyaml>=5               # For reading/parsing YAML files
 
 dicom2nifti>=2.2        # For conversion DICOM -> NIfTI
+python-gdcm>=3          # For compressed DICOM formats, required by dicom2nifti
 Pillow>=8               # For image handling and conversions
 
 opencv-python
