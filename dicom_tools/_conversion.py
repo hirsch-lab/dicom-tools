@@ -17,12 +17,11 @@ _logger = logging.getLogger(_LOGGER_ID)
 # Run static type checking with the following command:
 # mypy _utils.py --ignore-missing-imports --allow-redefinition
 from typing import Type, TypeVar, Tuple, List, Optional, Any, Iterator
-import numpy.typing as npt
 PathLike = TypeVar("PathLike", str, Path)
 
 ImageType = Type[pil.Image.Image]
 
-def _format_image(img: ImageType) -> npt.NDArray:
+def _format_image(img: ImageType) -> np.ndarray:
     # Turn multi-channel images into gray-scale.
     # Supported only for 8bit images.
     color_modes = ["RGB", "RGBA", "CMYK", "YCbCr",
@@ -41,7 +40,7 @@ def _format_image(img: ImageType) -> npt.NDArray:
     return img
 
 
-ImageYield = Iterator[Tuple[Optional[npt.NDArray], PathLike, int]]
+ImageYield = Iterator[Tuple[Optional[np.ndarray], PathLike, int]]
 def _read_image_gen(paths: List[Path],
                     sep: str="_") -> ImageYield:
     """
