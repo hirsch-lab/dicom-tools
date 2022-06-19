@@ -5,8 +5,8 @@ import os
 from pydicom import dcmread
 from pathlib import Path
 from dicom_tools._utils import setup_logging
-from dicom_tools._conversion import dicom2nifti
 from dicom_tools._dicom_dump import dump_to_yaml
+from dicom_tools._conversion import dicom2nifti_dir
 
 LOGGER_ID = "nifti"
 _logger = logging.getLogger(LOGGER_ID)
@@ -29,10 +29,12 @@ def _run(args):
                 _logger.error("The file {} could not be read by pydicom".format(f))
         exit(1)
 
-    dicom2nifti(in_dir=args.in_dir,
-                out_dir=args.out_dir,
-                comp=args.compression,
-                reor=args.reorient)
+    dicom2nifti_dir(in_dir=args.in_dir,
+                    out_dir=args.out_dir,
+                    compress=args.compression,
+                    reorient=args.reorient,
+                    flat=args.flat,
+                    override=args.force)
 
 
 def _parse_args():
@@ -61,6 +63,8 @@ def _parse_args():
 
     group.add_argument("-f", "--force", action="store_true",
                        help="Force writing of output files.")
+    group.add_argument("--flat", action="store_true",
+                       help="Flatten the input directory.")
 
     # DICOM
     group = parser.add_argument_group(("DICOM"))

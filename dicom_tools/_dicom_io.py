@@ -36,8 +36,36 @@ class CallablePrinter(Protocol):
 OptionalPrinter = Optional[CallablePrinter]
 
 
+def is_dicom_dir(path: PathLike,
+                 glob_expr: str="[!._]*",
+                 recursive: bool=False) -> bool:
+    """
+    Check if path is a folder containing at least one DICOM file.
+    Use glob_expr to filter for particular files. By default, all
+    files in path are tested, except "hidden" files starting with
+    a "." or "_"
+    """
+    path = Path(path)
+    if path.is_file():
+        return False
+    if recursive:
+        files = sorted(path.rglob(glob_expr))
+    else:
+        files = sorted(path.glob(glob_expr))
+    has_dicom_files = False
+    for file_path in files:
+        try:
+            dicom.dcmread(file_path, stop_before_pixels=True)
+        except:
+            continue
+        has_dicom_files = True
+        break
+    return has_dicom_files
+
+
 def move_file_or_folder(src: PathLike,
-                        dst: PathLike) -> bool:
+                        dst: PathLike,
+                        override: bool=False) -> bool:
     """
     Returns:
         True:       If file/folder is moved properly.
@@ -47,6 +75,9 @@ def move_file_or_folder(src: PathLike,
     src = Path(src)
     dst = Path(dst)
     if not src or not src.exists():
+        return False
+    elif dst.exists() and not override:
+        _logger.error("Target file already exists: %s", dst)
         return False
     else:
         ensure_out_dir(dst.parent)

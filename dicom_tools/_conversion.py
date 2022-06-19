@@ -8,7 +8,7 @@ import PIL as pil
 
 from pathlib import Path
 from ._utils import (search_files, create_progress_bar, ensure_out_dir)
-from ._dicom_io import move_file_or_folder
+from ._dicom_io import move_file_or_folder, is_dicom_dir
 
 _LOGGER_ID = "dicom"
 _logger = logging.getLogger(_LOGGER_ID)
@@ -181,6 +181,7 @@ def _ndarray2dicom(data: np.ndarray,
         _apply_attributes(data=ds,
                           meta=ds.file_meta,
                           attributes=attributes)
+
     dicom.dataset.validate_file_meta(ds.file_meta, enforce_standard=True)
     return ds
 
@@ -230,17 +231,21 @@ def stack2dicom(in_dir: PathLike,
 
 def dicom2nifti(in_dir: PathLike,
                 out_dir: PathLike,
-                comp: Optional[bool]=True,
-                reor: Optional[bool]=False) -> None:
+                compress: bool=True,
+                reorient: bool=False,
+                override: bool=False) -> Optional[Path]:
 
     in_dir = Path(in_dir)
     out_dir = Path(out_dir)
+    if not in_dir.is_dir():
+        _logger.error("Input folder does not exist: %s", in_dir)
+        return None
     if not ensure_out_dir(out_dir):
         return None
     with tempfile.TemporaryDirectory() as tmp_dir:
         dcm2nii.convert_directory(in_dir, tmp_dir,
-                                  compression=comp,
-                                  reorient=reor)
+                                  compression=compress,
+                                  reorient=reorient)
         files = list(Path(tmp_dir).glob("*.nii*"))
         if len(files)==0:
             _logger.error("Conversion to NIfTI failed.")
@@ -248,7 +253,38 @@ def dicom2nifti(in_dir: PathLike,
         assert len(files) == 1
         ret_path = Path(files[0])
         out_path = out_dir / (in_dir.name + "".join(ret_path.suffixes))
-        move_file_or_folder(src=ret_path, dst=out_path)
+        success = move_file_or_folder(src=ret_path, dst=out_path,
+                                      override=override)
+    return Path(out_path) if success else None
+
+
+def dicom2nifti_dir(in_dir: PathLike,
+                    out_dir: PathLike,
+                    compress: bool=True,
+                    reorient: bool=False,
+                    flat: bool=False,
+                    override: bool=False,
+                    show_progress: bool=True) -> None:
+    in_dir = Path(in_dir)
+    out_dir = Path(out_dir)
+
+    if not in_dir.is_dir():
+        _logger.error("Input folder does not exist: %s", in_dir)
+        return
+
+    sub_dirs = (d for d in in_dir.rglob("**/") if is_dicom_dir(d))
+    sub_dirs = sorted(sub_dirs)
+    progress = create_progress_bar(size=len(sub_dirs),
+                                   enabled=show_progress)
+    for i, sub_dir in enumerate(sub_dirs):
+        if flat:
+            out_dir_file = out_dir
+        else:
+            out_dir_file = out_dir / sub_dir.parent.relative_to(in_dir)
+        dicom2nifti(in_dir=sub_dir, out_dir=out_dir_file,
+                    compress=compress, reorient=reorient,
+                    override=override)
+        progress.update(i+1)
 
 
 def nifti2dicom(in_dir: PathLike,
@@ -258,15 +294,19 @@ def nifti2dicom(in_dir: PathLike,
                 n_files: Optional[int]=None,
                 attributes: Optional[dicom.Dataset]=None,
                 show_progress: bool=True) -> None:
-
     in_dir = Path(in_dir)
     out_dir = Path(out_dir)
+
+    if not in_dir.is_dir():
+        _logger.error("Input folder does not exist: %s", in_dir)
+        return None
     paths = search_files(in_dir=in_dir,
                          pattern=pattern,
                          regex=regex,
                          n_files=n_files)
     if not ensure_out_dir(out_dir):
         return None
+
     progress = create_progress_bar(size=len(paths),
                                    label="# NIfTI files",
                                    enabled=show_progress)
@@ -294,7 +334,6 @@ def nifti2dicom(in_dir: PathLike,
                                 instance_number=int(j+1),
                                 default_series_uid=series_uid,
                                 default_study_uid=study_uid)
-
             filename = "%s_%d.dcm" % (path.stem.split(".")[0], j)
             ds.save_as(out_dir / filename)
         progress.update(i)
