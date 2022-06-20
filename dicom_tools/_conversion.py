@@ -14,6 +14,17 @@ _LOGGER_ID = "dicom"
 _logger = logging.getLogger(_LOGGER_ID)
 
 
+_ENABLE_INCONSISTENT_SLICE_INCREMENTS = True
+if _ENABLE_INCONSISTENT_SLICE_INCREMENTS:
+    # https://github.com/icometrix/dicom2nifti
+    import dicom2nifti.settings as settings
+    settings.disable_validate_slice_increment()
+    settings.enable_resampling()
+    settings.set_resample_spline_interpolation_order(1)
+    settings.set_resample_padding(-1000)
+    _logger.warning("dicom-tools: Inconsistent slice increments are enabled!")
+
+
 # Run static type checking with the following command:
 # mypy _utils.py --ignore-missing-imports --allow-redefinition
 from typing import Type, TypeVar, Tuple, List, Optional, Any, Iterator
