@@ -243,7 +243,8 @@ def dicom2nifti(in_dir: PathLike,
                 out_dir: PathLike,
                 compress: bool=True,
                 reorient: bool=False,
-                override: bool=False) -> Optional[Path]:
+                override: bool=False,
+                skip_existing: bool=False) -> Optional[Path]:
 
     in_dir = Path(in_dir)
     out_dir = Path(out_dir)
@@ -252,7 +253,14 @@ def dicom2nifti(in_dir: PathLike,
         return None
     if not ensure_out_dir(out_dir):
         return None
+    suffix = ".nii.gz" if compress else ".nii"
+    out_path = out_dir / (in_dir.name + suffix)
+    if out_path.is_file() and skip_existing:
+        _logger.info("Skipping existing file: %s", out_path.name)
+        return Path(out_path)
+
     with tempfile.TemporaryDirectory() as tmp_dir:
+
         dcm2nii.convert_directory(in_dir, tmp_dir,
                                   compression=compress,
                                   reorient=reorient)
@@ -262,7 +270,6 @@ def dicom2nifti(in_dir: PathLike,
             return None
         assert len(files) == 1
         ret_path = Path(files[0])
-        out_path = out_dir / (in_dir.name + "".join(ret_path.suffixes))
         success = move_file_or_folder(src=ret_path, dst=out_path,
                                       override=override)
     return Path(out_path) if success else None
@@ -274,6 +281,7 @@ def dicom2nifti_dir(in_dir: PathLike,
                     reorient: bool=False,
                     flat: bool=False,
                     override: bool=False,
+                    skip_existing: bool=False,
                     show_progress: bool=True) -> None:
     in_dir = Path(in_dir)
     out_dir = Path(out_dir)
@@ -293,7 +301,7 @@ def dicom2nifti_dir(in_dir: PathLike,
             out_dir_file = out_dir / sub_dir.parent.relative_to(in_dir)
         dicom2nifti(in_dir=sub_dir, out_dir=out_dir_file,
                     compress=compress, reorient=reorient,
-                    override=override)
+                    override=override, skip_existing=skip_existing)
         progress.update(i+1)
 
 

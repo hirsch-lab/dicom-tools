@@ -34,7 +34,8 @@ def _run(args):
                     compress=args.compression,
                     reorient=args.reorient,
                     flat=args.flat,
-                    override=args.force)
+                    override=args.force,
+                    skip_existing=not args.force)
 
 
 def _parse_args():
