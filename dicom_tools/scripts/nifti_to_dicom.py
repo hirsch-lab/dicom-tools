@@ -5,7 +5,9 @@ import pydicom as dicom
 from dicom_tools._utils import setup_logging
 from dicom_tools._conversion import nifti2dicom
 from dicom_tools._dicom_dump import dump_to_yaml, from_yaml
-from stack_to_dicom import _dicom_attributes, _create_template_attribute_file
+# TODO: refactor this! Move these features into the lib.
+from dicom_tools.scripts.stack_to_dicom import (_dicom_attributes,
+                                                _create_template_attribute_file)
 
 LOGGER_ID = "back2dicom"
 _logger = logging.getLogger(LOGGER_ID)
