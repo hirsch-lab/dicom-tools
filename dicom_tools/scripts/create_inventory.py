@@ -15,7 +15,8 @@ def _run(args):
     data = create_dataset_summary(in_dir=args.in_dir,
                                   n_series_max=args.n_max,
                                   glob_expr=args.glob,
-                                  reg_expr=args.regex)
+                                  reg_expr=args.regex,
+                                  extra_keys=args.extra_keys)
     out_path = Path(args.out_path)
     if data is not None and ensure_out_dir(out_dir=out_path.parent):
         data.to_csv(out_path, index=False)
@@ -50,6 +51,8 @@ def _parse_args():
                                     "  --glob is evaluated first, then --regex\n"
                                     "- If neither --glob nor --regex are set:\n"
                                     "  Default choice is --glob=**/*.dcm"))
+    parser_group.add_argument("-e", "--extra-keys", nargs="+", type=str,
+                              default=None, help="Extra DICOM keys to extract.")
     parser_group.add_argument("-n", "--n-max", type=int, default=None,
                               help="Limit the number DICOM entries.")
     parser_group.add_argument("-h", "--help", action="help",

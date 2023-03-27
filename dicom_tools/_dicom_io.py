@@ -29,6 +29,7 @@ from typing_extensions import Protocol
 # TypeVar vs. Union: https://stackoverflow.com/questions/58903906
 PathLike = TypeVar("PathLike", str, Path)
 #PathLike = Union[str, Path]
+OptionalStringList = Optional[List[str]]
 OptionalPathList = Optional[List[Path]]
 OptionalFilter = Optional[Callable[[PathLike], bool]]
 class CallablePrinter(Protocol):
@@ -318,7 +319,8 @@ def create_dataset_summary(in_dir: PathLike,
                            reg_expr: Optional[str]=None,
                            n_series_max: Optional[int]=None,
                            show_progress: bool=True,
-                           skip_localizers: bool=True) -> pd.DataFrame:
+                           skip_localizers: bool=True,
+                           extra_keys: OptionalStringList=[]) -> pd.DataFrame:
     """
     Recursively search for DICOM data in a folder and represent the data
     as a pandas DataFrame.
@@ -374,9 +376,11 @@ def create_dataset_summary(in_dir: PathLike,
         return value
 
 
-    def _extract_dicom_info(dcm, parent_dir, skip_localizers):
+    def _extract_dicom_info(dcm, parent_dir, skip_localizers, extra_keys=[]):
         if dcm is None:
             return
+        if extra_keys is None:
+            extra_keys = []
 
         sid         = str(parent_dir)
         patient_id  = dcm.PatientID
@@ -397,6 +401,9 @@ def create_dataset_summary(in_dir: PathLike,
         series_desc = _extract_key(dcm, sid, "SeriesDescription", _NA,  False)
         study_desc  = _extract_key(dcm, sid, "StudyDescription",  _NA,  False)
         kvp         = _extract_key(dcm, sid, "KVP", None, False)  # CT: Peak kilo voltage
+        extra_data  = {(key[0].lower() + key[1:]):                # key
+                       _extract_key(dcm, sid, key, _NA, True)     # value
+                       for key in extra_keys}                     # for all keys
 
         # Extract image type
         # https://dicom.innolitics.com/ciods/ct-image/general-image/00080008
@@ -448,6 +455,8 @@ def create_dataset_summary(in_dir: PathLike,
                    seriesInstanceUID=series_uid,
                    sopInstanceUID=sop_uid,
                    path=parent_dir)
+        # Update dict with extra data iff not already present.
+        row.update({k:v for k, v in extra_data.items() if k not in row})
         return row
 
 
@@ -515,7 +524,8 @@ def create_dataset_summary(in_dir: PathLike,
             if dcm is None:
                 continue  # Inner loop
             row = _extract_dicom_info(dcm=dcm, parent_dir=parent_dir,
-                                      skip_localizers=skip_localizers)
+                                      skip_localizers=skip_localizers,
+                                      extra_keys=extra_keys)
             if row is not None:
                 # We have found a valid "first" DICOM of a series.
                 break  # Outer loop
@@ -531,6 +541,8 @@ def create_dataset_summary(in_dir: PathLike,
 
     data = pd.DataFrame(data)
     if not data.empty:
+        # Which time to use: study, series, acquisition?
+        # Not all seem to be equally reliable.
         sort_list = ["patientId", "seriesDateTime"]
         data = data.sort_values(sort_list)
         data = data.reset_index(drop=True)
