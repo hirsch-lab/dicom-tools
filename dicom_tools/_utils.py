@@ -29,7 +29,7 @@ def ensure_out_dir(out_dir: PathLike, raise_error: bool=False) -> bool:
         _logger.debug("Creating target directory: %s...", out_dir)
         try:
             out_dir.mkdir(parents=True, exist_ok=True)
-        except PermissionError as ex:
+        except (PermissionError, FileNotFoundError) as ex:
             msg = "Caught an exception when creating the target directory: %s"
             _logger.error(msg, out_dir)
             _logger.error(str(ex))
