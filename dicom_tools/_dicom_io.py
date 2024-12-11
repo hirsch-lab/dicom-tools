@@ -357,6 +357,10 @@ def create_dataset_summary(in_dir: PathLike,
         spacing     = _extract_key(dcm, sid, "PixelSpacing",      _NA,  False)
         n_frames    = _extract_key(dcm, sid, "NumberOfFrames",    None, False)
         description = _extract_key(dcm, sid, "SeriesDescription", _NA,  False)
+        radiation_setting = _extract_key(dcm, sid, "RadiationSetting", _NA, False)
+        positioner_motion = _extract_key(dcm, sid, "PositionerMotion", _NA, False)
+        body_part_examined = _extract_key(dcm, sid, "BodyPartExamined", _NA, False)
+
 
         if n_frames is None:
             n_frames = len(dicom_files)
@@ -379,6 +383,9 @@ def create_dataset_summary(in_dir: PathLike,
                    seriesInstanceUID=series_uid,
                    sopInstanceUID=sop_uid,
                    seriesDescription=description,
+                   radiationSetting=radiation_setting,
+                   positionerMotion=positioner_motion,
+                   bodyPartExamined=body_part_examined,
                    path=series_dir)
         data.append(row)
         progress.update(i)
