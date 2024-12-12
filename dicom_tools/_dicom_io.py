@@ -399,12 +399,13 @@ def create_dataset_summary(in_dir: PathLike,
                    modality=modality,
                    size=size,
                    spacing=spacing,
-                   nFrames=n_frames,
-                   studyInstanceUID=study_uid,
-                   seriesInstanceUID=series_uid,
-                   sopInstanceUID=sop_uid)
+                   nFrames=n_frames)
         if extra_tags:
             row.update(extra_data)
+        
+        row["studyInstanceUID"] = study_uid
+        row["seriesInstanceUID"] = series_uid
+        row["sopInstanceUID"] = sop_uid
         # Path always comes last.
         row["path"] = str(series_dir)
         
