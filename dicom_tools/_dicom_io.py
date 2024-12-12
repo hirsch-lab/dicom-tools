@@ -172,7 +172,7 @@ def copy_headers(in_dir: PathLike,
         folders_created.add(out_parent)
         if first_file_only and out_parent==previous_parent:
             continue
-        dataset = dicom.read_file(filepath)
+        dataset = dicom.dcmread(filepath)
         # This fixes a problem for corrupted data sets.
         pixel_data_tag = dicom.tag.Tag("PixelData")
         if not pixel_data_tag in dataset and skip_empty:
@@ -218,7 +218,7 @@ def print_info(path: PathLike,
         _logger.error("Expecting a DICOM file as input: %s", path)
         return
 
-    dataset = dicom.read_file(path)
+    dataset = dicom.dcmread(path)
 
     if detailed:
         printer()
@@ -344,7 +344,7 @@ def create_dataset_summary(in_dir: PathLike,
         assert(series_dir.name == series_id)
 
         sid         = series_id
-        dcm         = dicom.read_file(file_path)
+        dcm         = dicom.dcmread(file_path)
         patient_id  = dcm.PatientID
         dt, dt_type = _extract_time(dcm, sid)
         modality    = _extract_key(dcm, sid, "Modality",          _NA,  True)
