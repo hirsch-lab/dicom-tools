@@ -71,7 +71,11 @@ def create_progress_bar(size: Optional[int]=None,
                 super().__init__(*args, **kwargs)
                 self.timer = RepeatTimer(interval=0.05,
                                          function=self.update)
-                self.timer.setDaemon(True)
+                try:
+                    self.timer.daemon = True
+                except AttributeError:
+                    # Deprecated since Python 3.10
+                    self.timer.setDaemon(True)
             def run(self):
                 while not self.finished.wait(self.interval):
                     self.function(*self.args, **self.kwargs)
