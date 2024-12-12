@@ -11,6 +11,12 @@ from ._utils import (check_in_dir,
                      ensure_out_dir,
                      create_progress_bar)
 
+
+try:
+    _PYDICOM_MAJOR_VERSION = int(dicom.__version__.split(".")[0])
+except AttributeError:
+    _PYDICOM_MAJOR_VERSION = 3
+
 _NA = "N/A"
 _DICOM_SUFFIX = ".dcm"
 _LOGGER_ID = "dicom"
@@ -182,8 +188,12 @@ def copy_headers(in_dir: PathLike,
             del dataset.PixelData
         else:
             _logger.debug("No pixel data to remove: %s", filepath.stem)
-        dataset.save_as(str(out_file),
-                        write_like_original=True)
+        if _PYDICOM_MAJOR_VERSION >= 3:
+            dataset.save_as(str(out_file),
+                            enforce_file_format=True)
+        else:
+            dataset.save_as(str(out_file),
+                            write_like_original=True)
         files_created.append(out_file)
         previous_parent = out_parent
     progress.finish()
