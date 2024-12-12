@@ -267,7 +267,9 @@ def print_info(path: PathLike,
 def create_dataset_summary(in_dir: PathLike,
                            glob_expr: str=f"**/*{_DICOM_SUFFIX}",
                            n_series_max: Optional[int]=None,
-                           show_progress: bool=True) -> pd.DataFrame:
+                           show_progress: bool=True,
+                           extra_tags: Optional[List[str]]=[],
+                           ) -> pd.DataFrame:
     """
     Recursively search for DICOM data in a folder and represent the data
     as a pandas DataFrame.
@@ -310,12 +312,18 @@ def create_dataset_summary(in_dir: PathLike,
                      key: str,
                      default: Any=_NA,
                      warn: bool=True) -> Any:
+        def _clean_string(s: str) -> str:
+            if not isinstance(s, str):
+                return s
+            return s.replace('\"',"").replace("\n","_").replace(";","_")
         value = dataset.get(key, None)
         if value is None:
             if warn:  # pragma no cover
                 _logger.warning("Dataset has no tag '%s': %s",
                                 key, dataset_id)
             value = default
+        if isinstance(value, str):
+            value = _clean_string(value)
         return value
 
     # Construct a dict that maps the series to the *first* DICOM file.
@@ -366,19 +374,22 @@ def create_dataset_summary(in_dir: PathLike,
         size        = _NA if (cols==None or rows==None) else [cols, rows]
         spacing     = _extract_key(dcm, sid, "PixelSpacing",      _NA,  False)
         n_frames    = _extract_key(dcm, sid, "NumberOfFrames",    None, False)
-        description = _extract_key(dcm, sid, "SeriesDescription", _NA,  False)
-        radiation_setting = _extract_key(dcm, sid, "RadiationSetting", _NA, False)
-        positioner_motion = _extract_key(dcm, sid, "PositionerMotion", _NA, False)
-        body_part_examined = _extract_key(dcm, sid, "BodyPartExamined", _NA, False)
-
+        
+        # Default extra columns...
+        extra_tags.append("RadiationSetting")
+        extra_tags.append("PositionerMotion")
+        extra_tags.append("BodyPartExamined")
+        extra_tags.append("StudyDescription")
+        extra_tags.append("SeriesDescription")
+        
+        if extra_tags:
+            def _col_fmt(s: str) -> str:
+                return s[0].lower() + s[1:] if s else s
+            extra_data = {_col_fmt(col): _extract_key(dcm, sid, col, _NA, False)
+                          for col in extra_tags}
 
         if n_frames is None:
             n_frames = len(dicom_files)
-
-        # Clean dirty strings
-        description = description.replace('\"',"")
-        description = description.replace("\n","_")
-        description = description.replace(";","_")
 
         # This forms the row of the resulting table
         row = dict(patientId=patient_id,
@@ -391,12 +402,12 @@ def create_dataset_summary(in_dir: PathLike,
                    nFrames=n_frames,
                    studyInstanceUID=study_uid,
                    seriesInstanceUID=series_uid,
-                   sopInstanceUID=sop_uid,
-                   seriesDescription=description,
-                   radiationSetting=radiation_setting,
-                   positionerMotion=positioner_motion,
-                   bodyPartExamined=body_part_examined,
-                   path=series_dir)
+                   sopInstanceUID=sop_uid)
+        if extra_tags:
+            row.update(extra_data)
+        # Path always comes last.
+        row["path"] = str(series_dir)
+        
         data.append(row)
         progress.update(i)
 
