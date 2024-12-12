@@ -289,5 +289,18 @@ class TestCreateDatasetSummary(unittest.TestCase):
         self.assertEqual(len(summary), 2)
 
 
+class TestExtendedCreateDatasetSummary(unittest.TestCase):
+
+    def setUp(self):
+        self.data_dir = Path(__file__).parent / "data"
+        self.out_dir = Path(tempfile.mkdtemp())
+
+    def test_basic(self):
+        summary = create_dataset_summary(in_dir=self.data_dir,
+                                         extra_tags=["Manufacturer", "ManufacturerModelName"])
+        self.assertTrue("manufacturer" in summary.columns)
+        self.assertTrue("manufacturerModelName" in summary)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)
