@@ -13,7 +13,7 @@ def _run(args):
     setup_logging(verbosity=args.verbosity+1)
     data = create_dataset_summary(in_dir=args.in_dir,
                                   n_series_max=args.n_max,
-                                  extra_tags=extra_tags)
+                                  extra_tags=args.extra_tags)
     out_dir = Path(args.out_dir)
     if data is not None and ensure_out_dir(out_dir=out_dir):
         outpath = out_dir / "dicom_summary.csv"
