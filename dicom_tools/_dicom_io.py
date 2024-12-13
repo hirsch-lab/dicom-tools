@@ -369,6 +369,7 @@ def create_dataset_summary(in_dir: PathLike,
         sop_uid     = _extract_key(dcm, sid, "SOPInstanceUID",    _NA,  True)
         study_uid   = _extract_key(dcm, sid, "StudyInstanceUID",  _NA,  True)
         series_uid  = _extract_key(dcm, sid, "SeriesInstanceUID", _NA,  True)
+        thickness   = _extract_key(dcm, sid, "SliceThickness",    _NA,  False)
         cols        = _extract_key(dcm, sid, "Columns",           None, True)
         rows        = _extract_key(dcm, sid, "Rows",              None, True)
         size        = _NA if (cols==None or rows==None) else [cols, rows]
@@ -399,6 +400,7 @@ def create_dataset_summary(in_dir: PathLike,
                    modality=modality,
                    size=size,
                    spacing=spacing,
+                   thickness=thickness,
                    nFrames=n_frames,
                    studyInstanceUID=study_uid,
                    seriesInstanceUID=series_uid,
