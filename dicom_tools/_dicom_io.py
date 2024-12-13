@@ -375,6 +375,9 @@ def create_dataset_summary(in_dir: PathLike,
         size        = _NA if (cols==None or rows==None) else [cols, rows]
         spacing     = _extract_key(dcm, sid, "PixelSpacing",      _NA,  False)
         n_frames    = _extract_key(dcm, sid, "NumberOfFrames",    None, False)
+        image_tags  = _extract_key(dcm, sid, "ImageTags",         _NA,  False)
+        pixel_tags  = _extract_key(dcm, sid, "PixelTag",         _NA,  False)
+        exam_tags   = _extract_key(dcm, sid, "ExamTag",          _NA,  False)
         
         # Default extra columns...
         extra_tags.append("RadiationSetting")
@@ -401,6 +404,9 @@ def create_dataset_summary(in_dir: PathLike,
                    size=size,
                    spacing=spacing,
                    thickness=thickness,
+                   exam_tags=exam_tags,
+                   image_tags=image_tags,
+                   pixel_tags=pixel_tags,
                    nFrames=n_frames,
                    studyInstanceUID=study_uid,
                    seriesInstanceUID=series_uid,
