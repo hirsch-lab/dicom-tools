@@ -14,7 +14,8 @@ def _run(args):
                        file_filter=None,
                        first_file_only=not args.all,
                        show_progress=True,
-                       skip_empty=True)
+                       detect_empty=args.warn_empty,
+                       skip_empty=args.skip_empty)
 
 
 def _parse_args():
@@ -32,6 +33,10 @@ def _parse_args():
                               help="Increase verbosity")
     parser_group.add_argument("-h", "--help", action="help",
                               help="Show this help text")
+    parser_group.add_argument("--skip-empty", action="store_true",
+                              help="Skip empty DICOM files")
+    parser_group.add_argument("--warn-empty", action="store_true",
+                              help="Warn on empty DICOM files")
     parser_group.add_argument("-a", "--all", action="store_true",
                               help=("Create a header for every DICOM instance "
                                     "in a series. By default, the header of "
