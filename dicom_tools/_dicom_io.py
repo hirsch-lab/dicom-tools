@@ -287,6 +287,7 @@ def create_dataset_summary(in_dir: PathLike,
                            n_series_max: Optional[int]=None,
                            show_progress: bool=True,
                            extra_tags: Optional[List[str]]=[],
+                           read_pixel_data: bool=False,
                            ) -> pd.DataFrame:
     """
     Recursively search for DICOM data in a folder and represent the data
@@ -380,7 +381,8 @@ def create_dataset_summary(in_dir: PathLike,
         assert(series_dir.name == series_id)
 
         sid         = series_id
-        dcm         = dicom.dcmread(file_path)
+        dcm         = dicom.dcmread(file_path, 
+                                    stop_before_pixels=not read_pixel_data)
         patient_id  = dcm.PatientID
         dt, dt_type = _extract_time(dcm, sid)
         modality    = _extract_key(dcm, sid, "Modality",          _NA,  True)
