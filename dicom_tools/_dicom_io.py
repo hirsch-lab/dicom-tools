@@ -396,6 +396,7 @@ def create_dataset_summary(in_dir: PathLike,
         rows        = _extract_key(dcm, sid, "Rows",              None, True)
         size        = _NA if (cols==None or rows==None) else [cols, rows]
         spacing     = _extract_key(dcm, sid, "PixelSpacing",      _NA,  False)
+        thickness   = _extract_key(dcm, sid, "SliceThickness",    _NA,  False)
         n_frames    = _extract_key(dcm, sid, "NumberOfFrames",    None, False)
         
         # Default extra columns...
@@ -422,6 +423,7 @@ def create_dataset_summary(in_dir: PathLike,
                    modality=modality,
                    size=size,
                    spacing=spacing,
+                   thickness=thickness,
                    nFrames=n_frames)
         if extra_tags:
             row.update(extra_data)
