@@ -345,6 +345,9 @@ def create_dataset_summary(in_dir: PathLike,
             value = _clean_string(value)
         return value
 
+    if extra_tags is None:
+        extra_tags = []
+
     # Construct a dict that maps the series to the *first* DICOM file.
     # Assumption: DICOM series are located in distinct folders that
     # contain the files/DICOM instances.

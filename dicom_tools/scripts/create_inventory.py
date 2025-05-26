@@ -47,7 +47,7 @@ def _parse_args():
     parser_group.add_argument("-h", "--help", action="help",
                               help="Show this help text")
     # Provide list of optional dicom tags to include in the summary
-    parser_group.add_argument("-x", "--extra-tags", nargs="+", default=None,
+    parser_group.add_argument("-x", "--extra-tags", nargs="+", default=[],
                                 help="List of optional DICOM tags to include")
     parser_group.set_defaults(func=_run)
     return parser.parse_args()
