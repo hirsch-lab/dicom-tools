@@ -15,6 +15,12 @@ from dicom_tools._dicom_io import (copy_from_list,
 from dicom_tools._utils import setup_logging
 
 
+try:
+    _PYDICOM_MAJOR_VERSION = int(dicom.__version__.split(".")[0])
+except AttributeError:
+    _PYDICOM_MAJOR_VERSION = 3
+
+
 class TestCopyFromListBase(unittest.TestCase):
     def setUp(self):
         self.in_dir = Path(tempfile.mkdtemp())
@@ -213,94 +219,95 @@ class TestCopyDicomHeaders(unittest.TestCase):
                                detect_empty=False)
         self.assertEqual(len(headers), 2)
         
-        
-class TestCopyDicomHeadersDetectEmpty(unittest.TestCase):
-    def setUp(self):
-        data_dir = Path(__file__).parent / "data"
-        tmp_root = Path(tempfile.mkdtemp())
-        self.in_dir = tmp_root / "in"
-        self.out_dir = tmp_root / "out"
-        
-        shutil.copytree(data_dir, self.in_dir)
-        # The test data has no PixelData. Add some some mock data.
-        files = list(sorted(self.in_dir.glob("**/*.dcm")))
-        self.assertTrue(len(files)>0)
-        
-        np.random.seed(0)
-        for i, f in enumerate(files):
-            if i%2==1:
-                with dicom.dcmread(f) as ds:
-                    array = np.random.randint(0, 255, (100, 100), dtype=np.uint8)
-                    ds.set_pixel_data(array, photometric_interpretation="MONOCHROME2", bits_stored=8)
-                    ds.save_as(f)
 
-    def tearDown(self):
-        shutil.rmtree(self.out_dir)
+if _PYDICOM_MAJOR_VERSION >= 3:
+    class TestCopyDicomHeadersDetectEmpty(unittest.TestCase):
+        def setUp(self):
+            data_dir = Path(__file__).parent / "data"
+            tmp_root = Path(tempfile.mkdtemp())
+            self.in_dir = tmp_root / "in"
+            self.out_dir = tmp_root / "out"
 
-    def test_copy_first_only_detect_empty(self):
-        with self.assertLogs(_LOGGER_ID, level=logging.WARNING) as cm:
-            headers = copy_headers(in_dir=self.in_dir,
-                                   out_dir=self.out_dir,
-                                   glob_expr="**/*.dcm",
-                                   file_filter=None,
-                                   first_file_only=True,   ## <-----
-                                   show_progress=False,
-                                   detect_empty=True)      ## <-----
-            for message in cm.output:
-                self.assertTrue("PixelData is empty:" in message)
-            self.assertEqual(len(cm.output), 2)
-              
-        self.assertEqual(len(headers), 3)
-        self.assertTrue((self.out_dir / "_no_pixel_data.csv").exists())
-        missing = pd.read_csv(self.out_dir / "_no_pixel_data.csv", header=None)
-        self.assertEqual(len(missing), 2)
-        
-    def test_copy_all_detect_empty(self):
-        with self.assertLogs(_LOGGER_ID, level=logging.WARNING) as cm:
-            headers = copy_headers(in_dir=self.in_dir,
-                                   out_dir=self.out_dir,
-                                   glob_expr="**/*.dcm",
-                                   file_filter=None,
-                                   first_file_only=False,  ## <-----
-                                   show_progress=False,
-                                   detect_empty=True)      ## <-----
-            for message in cm.output:
-                self.assertTrue("PixelData is empty:" in message)
-            self.assertEqual(len(cm.output), 3)
-            
-        self.assertEqual(len(headers), 5)
-        self.assertTrue((self.out_dir / "_no_pixel_data.csv").exists())
-        missing = pd.read_csv(self.out_dir / "_no_pixel_data.csv", header=None)
-        self.assertEqual(len(missing), 3)
-        
-    def test_copy_first_only_skip_empty(self):
-        with self.assertNoLogs(_LOGGER_ID, level=logging.WARNING) as cm:
-            headers = copy_headers(in_dir=self.in_dir,
-                                   out_dir=self.out_dir,
-                                   glob_expr="**/*.dcm",
-                                   file_filter=None,
-                                   first_file_only=True,   ## <-----
-                                   show_progress=False,
-                                   detect_empty=False,     ## <-----
-                                   skip_empty=True)        ## <-----
-              
-        self.assertEqual(len(headers), 1)
-        self.assertFalse((self.out_dir / "_no_pixel_data.csv").is_file())
-        
-    def test_copy_all_skip_empty(self):
-        # assert no warning is logged
-        with self.assertNoLogs(_LOGGER_ID, level=logging.WARNING) as cm:
-            headers = copy_headers(in_dir=self.in_dir,
-                                   out_dir=self.out_dir,
-                                   glob_expr="**/*.dcm",
-                                   file_filter=None,
-                                   first_file_only=False,  ## <-----
-                                   show_progress=False,
-                                   detect_empty=False,     ## <-----
-                                   skip_empty=True)        ## <-----
-            
-        self.assertEqual(len(headers), 2)
-        self.assertFalse((self.out_dir / "_no_pixel_data.csv").exists())
+            shutil.copytree(data_dir, self.in_dir)
+            # The test data has no PixelData. Add some some mock data.
+            files = list(sorted(self.in_dir.glob("**/*.dcm")))
+            self.assertTrue(len(files)>0)
+
+            np.random.seed(0)
+            for i, f in enumerate(files):
+                if i%2==1:
+                    with dicom.dcmread(f) as ds:
+                        array = np.random.randint(0, 255, (100, 100), dtype=np.uint8)
+                        ds.set_pixel_data(array, photometric_interpretation="MONOCHROME2", bits_stored=8)
+                        ds.save_as(f)
+
+        def tearDown(self):
+            shutil.rmtree(self.out_dir)
+
+        def test_copy_first_only_detect_empty(self):
+            with self.assertLogs(_LOGGER_ID, level=logging.WARNING) as cm:
+                headers = copy_headers(in_dir=self.in_dir,
+                                       out_dir=self.out_dir,
+                                       glob_expr="**/*.dcm",
+                                       file_filter=None,
+                                       first_file_only=True,   ## <-----
+                                       show_progress=False,
+                                       detect_empty=True)      ## <-----
+                for message in cm.output:
+                    self.assertTrue("PixelData is empty:" in message)
+                self.assertEqual(len(cm.output), 2)
+
+            self.assertEqual(len(headers), 3)
+            self.assertTrue((self.out_dir / "_no_pixel_data.csv").exists())
+            missing = pd.read_csv(self.out_dir / "_no_pixel_data.csv", header=None)
+            self.assertEqual(len(missing), 2)
+
+        def test_copy_all_detect_empty(self):
+            with self.assertLogs(_LOGGER_ID, level=logging.WARNING) as cm:
+                headers = copy_headers(in_dir=self.in_dir,
+                                       out_dir=self.out_dir,
+                                       glob_expr="**/*.dcm",
+                                       file_filter=None,
+                                       first_file_only=False,  ## <-----
+                                       show_progress=False,
+                                       detect_empty=True)      ## <-----
+                for message in cm.output:
+                    self.assertTrue("PixelData is empty:" in message)
+                self.assertEqual(len(cm.output), 3)
+
+            self.assertEqual(len(headers), 5)
+            self.assertTrue((self.out_dir / "_no_pixel_data.csv").exists())
+            missing = pd.read_csv(self.out_dir / "_no_pixel_data.csv", header=None)
+            self.assertEqual(len(missing), 3)
+
+        def test_copy_first_only_skip_empty(self):
+            with self.assertNoLogs(_LOGGER_ID, level=logging.WARNING) as cm:
+                headers = copy_headers(in_dir=self.in_dir,
+                                       out_dir=self.out_dir,
+                                       glob_expr="**/*.dcm",
+                                       file_filter=None,
+                                       first_file_only=True,   ## <-----
+                                       show_progress=False,
+                                       detect_empty=False,     ## <-----
+                                       skip_empty=True)        ## <-----
+
+            self.assertEqual(len(headers), 1)
+            self.assertFalse((self.out_dir / "_no_pixel_data.csv").is_file())
+
+        def test_copy_all_skip_empty(self):
+            # assert no warning is logged
+            with self.assertNoLogs(_LOGGER_ID, level=logging.WARNING) as cm:
+                headers = copy_headers(in_dir=self.in_dir,
+                                       out_dir=self.out_dir,
+                                       glob_expr="**/*.dcm",
+                                       file_filter=None,
+                                       first_file_only=False,  ## <-----
+                                       show_progress=False,
+                                       detect_empty=False,     ## <-----
+                                       skip_empty=True)        ## <-----
+
+            self.assertEqual(len(headers), 2)
+            self.assertFalse((self.out_dir / "_no_pixel_data.csv").exists())
 
 
 class TestPrintInfo(unittest.TestCase):
