@@ -13,7 +13,8 @@ def _run(args):
     setup_logging(verbosity=args.verbosity+1)
     data = create_dataset_summary(in_dir=args.in_dir,
                                   n_series_max=args.n_max,
-                                  extra_tags=args.extra_tags)
+                                  extra_tags=args.extra_tags,
+                                  read_pixel_data=args.read_pixel_data)
     out_dir = Path(args.out_dir)
     if data is not None and ensure_out_dir(out_dir=out_dir):
         outpath = out_dir / "dicom_summary.csv"
@@ -41,10 +42,12 @@ def _parse_args():
                               help="Increase verbosity")
     parser_group.add_argument("-n", "--n-max", type=int, default=None,
                               help="Limit the number DICOM entries.")
+    parser_group.add_argument("--read-pixel-data", action="store_true",
+                              help="Force-read pixel data (slow)")
     parser_group.add_argument("-h", "--help", action="help",
                               help="Show this help text")
     # Provide list of optional dicom tags to include in the summary
-    parser_group.add_argument("-x", "--extra-tags", nargs="+", default=None,
+    parser_group.add_argument("-x", "--extra-tags", nargs="+", default=[],
                                 help="List of optional DICOM tags to include")
     parser_group.set_defaults(func=_run)
     return parser.parse_args()

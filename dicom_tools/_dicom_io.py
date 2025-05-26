@@ -138,7 +138,8 @@ def copy_headers(in_dir: PathLike,
                  file_filter: OptionalFilter=None,
                  first_file_only: bool=True,
                  show_progress: bool=True,
-                 skip_empty: bool=True) -> OptionalPathList:
+                 detect_empty: bool=False,
+                 skip_empty: bool=False) -> OptionalPathList:
     in_dir = Path(in_dir)
     out_dir = Path(out_dir)
     if not check_in_dir(in_dir):
@@ -162,6 +163,7 @@ def copy_headers(in_dir: PathLike,
     # Copy action
     files_created = []
     folders_created = set()
+    no_pixel_data = []
 
     _logger.info("Copying DICOM files...")
     progress = create_progress_bar(size=n_files,
@@ -178,24 +180,40 @@ def copy_headers(in_dir: PathLike,
         folders_created.add(out_parent)
         if first_file_only and out_parent==previous_parent:
             continue
-        dataset = dicom.dcmread(filepath)
-        # This fixes a problem for corrupted data sets.
+        dataset = dicom.dcmread(filepath,
+                                stop_before_pixels=not (detect_empty or skip_empty))
+
         pixel_data_tag = dicom.tag.Tag("PixelData")
-        if not pixel_data_tag in dataset and skip_empty:
-            continue
-        elif pixel_data_tag in dataset:
+        
+        # If detect_empty or skip_empty:
+        if not pixel_data_tag in dataset:
+            if detect_empty:
+                _logger.warning("PixelData is empty: %s", filepath.name)
+                no_pixel_data.append(filepath)
+            if skip_empty:
+                continue
+
+        # Remove PixelData (header only dicom)
+        if pixel_data_tag in dataset:
             # Reset pixel data.
             del dataset.PixelData
-        else:
-            _logger.debug("No pixel data to remove: %s", filepath.stem)
+
         if _PYDICOM_MAJOR_VERSION >= 3:
             dataset.save_as(str(out_file),
                             enforce_file_format=True)
         else:
             dataset.save_as(str(out_file),
                             write_like_original=True)
+            
         files_created.append(out_file)
         previous_parent = out_parent
+
+    if no_pixel_data:
+        # Cases with missing pixel data
+        no_pixel_data_file = out_dir / "_no_pixel_data.csv"
+        with open(no_pixel_data_file, "w") as f:
+            f.write("\n".join([str(f) for f in no_pixel_data]))
+
     progress.finish()
     _logger.info("Done!")
     _logger.info("Created %d DICOM headers in %d folders.",
@@ -269,6 +287,7 @@ def create_dataset_summary(in_dir: PathLike,
                            n_series_max: Optional[int]=None,
                            show_progress: bool=True,
                            extra_tags: Optional[List[str]]=[],
+                           read_pixel_data: bool=False,
                            ) -> pd.DataFrame:
     """
     Recursively search for DICOM data in a folder and represent the data
@@ -326,6 +345,9 @@ def create_dataset_summary(in_dir: PathLike,
             value = _clean_string(value)
         return value
 
+    if extra_tags is None:
+        extra_tags = []
+
     # Construct a dict that maps the series to the *first* DICOM file.
     # Assumption: DICOM series are located in distinct folders that
     # contain the files/DICOM instances.
@@ -362,7 +384,8 @@ def create_dataset_summary(in_dir: PathLike,
         assert(series_dir.name == series_id)
 
         sid         = series_id
-        dcm         = dicom.dcmread(file_path)
+        dcm         = dicom.dcmread(file_path, 
+                                    stop_before_pixels=not read_pixel_data)
         patient_id  = dcm.PatientID
         dt, dt_type = _extract_time(dcm, sid)
         modality    = _extract_key(dcm, sid, "Modality",          _NA,  True)

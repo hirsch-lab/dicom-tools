@@ -1,4 +1,4 @@
-__version__ = "0.3.0"
+__version__ = "0.3.1"
 __author__ = "Norman Juchler"
 
 from ._dicom_io import (copy_from_file,
